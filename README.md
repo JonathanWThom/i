@@ -28,14 +28,12 @@ at the end — not a toy. The design priorities, in order:
 
 ## Status
 
-Design complete. Documentation in progress. **The language is not yet
-implemented.** This repo currently contains:
+**Documentation complete.** The end-state user docs are written; every
+example program in `examples/` is a complete, syntactically valid `i`
+program — though none of them are runnable yet because the implementation
+doesn't exist.
 
-- The design spec (`docs/superpowers/specs/`)
-- The end-state user docs (`docs/`)
-- The implementation plans (`docs/superpowers/plans/`)
-
-The Rust implementation arrives in subsequent plans.
+**Implementation: not started.** Plan 2 (lexer + parser) is next.
 
 ## Documentation
 
