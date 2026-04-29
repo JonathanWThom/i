@@ -450,7 +450,7 @@ The minimum stdlib v1 must ship:
 - `Std.IO` — `print`, `println`, `readLine`, `readFile`, `writeFile`. All return `! IO`.
 - `Std.Ref a` — `make`, `get`, `set` for mutable cells; ops are `! State`
 
-**Traits in the prelude** (auto-imported, not in any one module): `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, `Neg`, `Show`. Operators desugar to these. `Show.show : a -> String` is the conversion that `print!` and string-concatenation idioms rely on; every primitive type and most stdlib types have a derived `Show` impl.
+**Traits in the prelude** (auto-imported, not in any one module): `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, `Neg`, `Pow`, `Show`. Operators desugar to these — including `^`, which desugars to `Pow.pow` and is implemented on `Float` (and any user type that opts in). `Show.show : a -> String` is the conversion that `print!` and string-concatenation idioms rely on; every primitive type and most stdlib types have a derived `Show` impl.
 
 Numeric tower stays minimal: only `Int` (i64) and `Float` (f64). Sized integers (`Int8`, `UInt32`, etc.) and arbitrary-precision can be added without breaking changes.
 

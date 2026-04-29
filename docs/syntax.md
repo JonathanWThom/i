@@ -668,8 +668,7 @@ Every primitive type and most stdlib types implement the standard set.
 are called paren-free like any other function.
 
 `Show.show : a -> String` is the conversion used by `print!` and string
-concatenation idioms; primitive and most stdlib types ship a derived `Show`
-impl.
+concatenation idioms (see [stdlib.md § `Show`](stdlib.md)).
 
 ---
 

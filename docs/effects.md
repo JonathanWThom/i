@@ -101,8 +101,11 @@ Two labels, total:
 
 - **`IO`** — anything that crosses the program/world boundary. The standard
   library's `Std.IO` operations all carry `! IO`: `print`, `println`,
-  `readLine`, `readFile`, `writeFile`. Future filesystem or network
-  primitives, when they arrive, will carry `! IO` as well.
+  `readLine`, `readFile`, `writeFile`. The `readFile` / `writeFile` error
+  surface is provisionally `IoError`; its variants are not yet pinned (see
+  [stdlib.md § `Std.IO`](stdlib.md) and [limitations.md](limitations.md)).
+  Future filesystem or network primitives, when they arrive, will carry
+  `! IO` as well.
 - **`State`** — mutable cell operations, exposed through `Std.Ref`.
   `Ref.make`, `Ref.get`, and `Ref.set` all carry `! State`. A function that
   reads or writes a `Ref` inherits `! State` in its inferred row.

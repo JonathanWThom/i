@@ -70,6 +70,15 @@ is used at no concrete type — the error names the variable and the
 location. The fix is an annotation at that site, not a global hint.
 
 ```i
+# fails: `[]` produces a `List a` for any `a`, and nothing in this
+# binding pins the element type.
+xs = []
+
+# fixed by annotating the binding:
+xs : List Int = []
+```
+
+```i
 double : Int -> Int               # explicit at the interface
 double = n -> n * 2
 ```
@@ -209,8 +218,13 @@ body cannot inspect or branch on the type. If you want behavior that
 varies by type, use a trait (see § 7).
 
 A function that uses *both* `a` and `b` constrains them independently:
-`pair : a, b -> Pair a b`. Same letter means same type; different letters
-mean independently inferred.
+`zip : List a, List b -> List (a, b)` (from [`Std.List`](stdlib.md)) takes
+two lists whose element types are decided independently. Same letter means
+same type across the signature; different letters mean independently
+inferred.
+
+For trait-constrained generics — `a` such that `Eq a`, for example — see
+§ 7.
 
 ---
 
@@ -259,7 +273,9 @@ This is the same nominal mechanism — `UserId` is still distinct from
 
 Traits are how `i` does ad-hoc polymorphism: behavior that depends on the
 type of a value. A trait declaration names methods; an `impl` provides
-those methods for a specific type.
+those methods for a specific type. Generic functions that need
+type-dependent behavior write a constraint such as `Eq a => ...` (see
+§ 5 for the parametric base case).
 
 ```i
 trait Eq a
@@ -280,9 +296,10 @@ impl Eq Point
 `Ord.lt a, b`. The full table lives in [syntax.md § 11](syntax.md). To
 make a type usable with `+`, write `impl Add Type`; to make it
 comparable, `impl Eq Type`. The prelude pre-imports `Eq`, `Ord`, `Add`,
-`Sub`, `Mul`, `Div`, `Neg`, and `Show`, so operators on primitives just
-work. `Show.show : a -> String` is the conversion that `print!` and `++`
-rely on.
+`Sub`, `Mul`, `Div`, `Neg`, `Pow`, and `Show`, so operators on primitives
+just work. `Show.show : a -> String` is the conversion that `print!` and
+`++` rely on. See [stdlib.md § Prelude traits](stdlib.md) for each
+trait's signature.
 
 **Coherence.** `i` follows Haskell-style global coherence: at most one
 `impl Trait Type` exists in the entire program for each `(trait, type)`

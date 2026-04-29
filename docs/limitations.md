@@ -54,7 +54,8 @@ Lifting this means a bytecode VM (v2) and later a native backend (v3).
 The interpreter is single-threaded; no green threads, async/await,
 channels, or shared-memory primitives.
 Picking a concurrency model is load-bearing; v1 ships effects-with-
-handlers first so v2 concurrency can be expressed as an effect.
+handlers first (see [effects.md](effects.md)) so v2 concurrency can be
+expressed as an effect.
 Lifting this means choosing a model (the spec earmarks actors) and
 implementing it on the v2 VM.
 
@@ -128,12 +129,16 @@ the corresponding feature ships, not before v1 freezes.
   specified, and the v3 native backend (Cranelift vs. LLVM vs. custom)
   is open.
 - **`corecursive` annotation** — syntax and checking rules for marking
-  productive functions are sketched in `types.md` but not pinned.
+  productive functions are sketched in [types.md § 8](types.md) but not
+  pinned.
 - **Rest patterns `[head, ...tail]`** — appear in examples; the
-  exhaustiveness algorithm for them is not yet specified.
+  exhaustiveness algorithm for them is not yet specified (see
+  [patterns.md § 2](patterns.md)).
 - **Guards in `match`** — `match ... if <expr> -> ...` is mentioned,
-  but its interaction with exhaustiveness checking is undecided.
-- **`Std.Env`** — referenced from `effects.md`, but its function list
-  is not enumerated in `stdlib.md`.
+  but its interaction with exhaustiveness checking is undecided (see
+  [patterns.md § 5](patterns.md)).
+- **`Std.Env`** — reserved for reading program arguments and environment
+  variables (see [building.md § 3](building.md)); its function list is
+  not enumerated in [stdlib.md](stdlib.md).
 - **Error type for `readFile` / `writeFile`** — variants of the I/O
   error type are not pinned; docs use a placeholder `IoError`.

@@ -76,8 +76,10 @@ i run examples/01-hello.i
 type-check, lower, evaluate — and prints whatever the program prints. Exit
 code is `0` on clean run, `1` on a type error, `2` on a runtime error.
 
-Arguments after `--` are passed to the program (once `i` exposes a `Std.Env`
-module to read them; until then `--` is reserved but inert).
+Arguments after `--` are reserved for the program. v1 does not yet expose
+a stdlib module for reading them; the slot is held for a future
+`Std.Env` (see [limitations.md](limitations.md)). Until that lands, `--`
+is parsed but inert.
 
 ### `i check <file>`
 

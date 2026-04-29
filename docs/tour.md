@@ -31,7 +31,8 @@ name, `main`. Second, a program runs by evaluating the `main` value of the
 Third, `print!`. The `!` is not punctuation; it's the effect marker. It says
 "this call performs an effect" — here, IO.
 
-Next: how `=` and `:` introduce values and types.
+Next: how `=` and `:` introduce values and types. For the lookup-style
+reference of every form shown here, see [syntax.md](syntax.md).
 
 ---
 
@@ -114,7 +115,8 @@ add    : Int, Int -> Int
 The comma-separated arg types mirror the comma-separated lambda form — `add`
 takes two `Int`s, not an `Int` returning an `Int -> Int`.
 
-Next: bundling values into records.
+Next: bundling values into records. For the formal rules on functions and
+type signatures, see [types.md § 5](types.md) and [syntax.md § 4](syntax.md).
 
 ---
 
@@ -329,10 +331,9 @@ same nesting trick from section 3 — they keep the lambda's commas from
 being read as more arguments to `fold`. There is no `for` loop in `i`; when
 you want to walk a list, you reach for `map`, `filter`, or `fold`.
 
-Note `head : List a -> Maybe a`. The standard library never crashes on an
-empty list; it gives back a `Maybe`.
-
-For the full list of stdlib operations, see [stdlib.md](stdlib.md).
+The standard library never crashes on an empty list — `head` returns
+`Maybe a`, not `a`. See [stdlib.md § `Std.List`](stdlib.md) for the full
+list of operations.
 
 ---
 

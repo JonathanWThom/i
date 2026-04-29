@@ -115,8 +115,8 @@ parts match
 
 v1 has not yet specified rest patterns and guards. They will be added in a
 later spec revision. Until then, walking a list of unknown length goes
-through the constructor form (`Empty` and `Cons` from `Std.List`) or
-through `head`/`tail`/`map`/`fold`.
+through the constructor form (`Empty` and `Cons` from
+[`Std.List`](stdlib.md)) or through `head`/`tail`/`map`/`fold`.
 
 ### Record destructuring
 
@@ -232,5 +232,7 @@ inside the arm body with a regular `match` on the condition.
 - [tour.md § 5](tour.md) — guided introduction to `match`.
 - [types.md § 4](types.md) — sum-type design and the exhaustiveness
   property at the type-system level.
+- [stdlib.md](stdlib.md) — `List`, `Maybe`, and `Result`, the sums most
+  commonly matched.
 - `examples/06-tree.i` — a recursive `match` over a generic tree, the
   worked example for this manual.

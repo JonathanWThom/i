@@ -65,6 +65,17 @@ neg : a -> a
 
 Unary minus. The expression `-x` desugars to `Neg.neg x`.
 
+### `Pow a`
+
+```
+pow : a, a -> a
+```
+
+Exponentiation. The `^` operator desugars to `Pow.pow`. `Float` ships
+an impl backed by `Std.Float.pow`; `Int` does not (negative integer
+exponents would not return an `Int`). Write `impl Pow T` to opt in
+a user-defined numeric type.
+
 ### `Show a`
 
 ```
@@ -477,8 +488,9 @@ procedure — call it `readLine!`.
 ### `readFile : String ! IO -> String`
 
 Read the entire file at the given path as a string. (File-not-found and
-similar errors are exposed as `! IO` failures; the v1 spec leaves the
-exact error-surface for IO TBD — see [limitations.md](limitations.md).)
+similar errors surface through the IO error channel — provisionally
+typed `IoError` — whose variants the v1 spec has not pinned. See
+[limitations.md](limitations.md).)
 
 ### `writeFile : String, String ! IO -> Unit`
 
