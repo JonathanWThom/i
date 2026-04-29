@@ -250,7 +250,7 @@ list.
 ```i
 type Point
     x : Float
-    distance = other -> self.x - other.x
+    deltaX = other -> self.x - other.x
 ```
 
 ---
@@ -292,7 +292,8 @@ an argument, so the lambda's `,` separators are not read as more arguments.
 Single-argument lambdas need no parens.
 
 ```i
-nums.fold 0, (acc, x -> acc + x)
+# nums.fold 0, acc, x -> acc + x      # ambiguous: parser sees four args to fold
+nums.fold 0, (acc, x -> acc + x)      # parens disambiguate
 ```
 
 ### Construction
@@ -313,15 +314,6 @@ left side is a type or a value.
 
 ```i
 p2 = p1(x = 5)
-```
-
-### String concatenation
-
-`++` concatenates two strings. (Desugars to a trait method like other
-operators; listed here because it appears in idiomatic call sites.)
-
-```i
-msg = "hi, " ++ name
 ```
 
 ---
@@ -393,6 +385,8 @@ type Shape
 `Variant : T` is shorthand for a variant carrying exactly one anonymous
 payload of type `T`. The payload is exposed as the variant itself in
 patterns (`Some x` binds `x : a`), not as a named field.
+The uppercase identifier marks this as a variant; a lowercase name with
+`:` would be a field declaration instead.
 
 ```i
 type Maybe a
