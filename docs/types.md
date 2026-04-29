@@ -38,6 +38,22 @@ You almost never write a type. Inference handles the interior of a function;
 you write a type only at interfaces — module-exposed names, trait
 declarations — or when inference can't decide on its own.
 
+**What inference produces.** The algorithm is Hindley-Milner-style: a
+single bottom-up pass with let-polymorphism at binding sites. Top-level
+bindings are *generalized* — `id = x -> x` at the top level gets the
+polymorphic type `a -> a` and can be used at any type. Local bindings
+inside a function body are *not* generalized; they are monomorphic,
+fixed at their first use. Mutual recursion is allowed within a single
+let-group, and a module's top-level bindings form one such group.
+
+Trait usage propagates as constraints into the inferred signature. The
+notation `Constraint => ...` reads "for any type satisfying this
+constraint":
+
+```i
+eq : Eq a => a, a -> Bool       # for any a that has an Eq impl
+```
+
 The rule of thumb:
 
 - **Local bindings:** inferred. `n = 42` does not need an annotation.
@@ -58,10 +74,9 @@ double : Int -> Int               # explicit at the interface
 double = n -> n * 2
 ```
 
-Module-exposed names get inferred types within the module; consumers see
-the inferred signature unchanged. Writing the signature is still
-recommended for exposed names, because it pins the interface against
-accidental widening.
+Module-exposed names get inferred types unchanged; writing the signature
+is still recommended, because it pins the interface against accidental
+widening.
 
 ---
 
@@ -85,9 +100,12 @@ the binding's location supplies it.
 
 Construction and update share one surface. A type applied to keyword
 arguments constructs; an instance applied to keyword arguments produces a
-copy with overrides. Construction parens are required (not just grouping)
-because the inner `=` of a kwarg would otherwise collide with the outer
-binding `=`.
+copy with overrides. Both express the same idea — "an instance with
+these field values" — and differ only in where the unsupplied fields
+come from: you must give all of them at construction; the prior instance
+supplies them on update. Construction parens are required (not just
+grouping) because the inner `=` of a kwarg would otherwise collide with
+the outer binding `=`.
 
 ```i
 p1 = Point(x = 0, y = 0)        # construct
@@ -139,6 +157,10 @@ shape match
     Rect w, h   -> w * h
     # forgetting either arm is a compile error
 ```
+
+Constructor patterns also support positional binding in field-declaration
+order — `Rect w, h` binds `w = width` and `h = height`. Both positional
+and named-field forms are accepted; pick whichever reads better.
 
 This is the language's most-relied-on safety property. You can refactor a
 sum type — add a variant, rename one — and the compiler will list every
@@ -215,9 +237,9 @@ lookupUser uid = ...
 lookupUser someOrderId
 ```
 
-Newtypes are zero-cost at runtime: the wrapper exists only in the type
-checker. There is no boxing and no allocation for a newtype that wraps a
-primitive.
+`i`'s implementation is expected to compile newtypes to zero-cost
+wrappers — no boxing, no allocation for a newtype that wraps a primitive
+— though the spec does not formally pin the runtime representation.
 
 The block form is the long-hand equivalent and is useful when you want to
 add methods to the wrapper:
@@ -304,10 +326,11 @@ an output of the result type, full stop — no third "or it crashes"
 outcome.
 
 The cost is also real. Algorithms that genuinely need general recursion
-(some graph traversals, some search procedures) will need the
-forthcoming `corecursive` escape hatch; until then, expressing them
-requires either restructuring as structural recursion or waiting on the
-language extension.
+(some graph traversals, some search procedures) will need a
+`corecursive` escape hatch (TBD); until then, expressing them requires
+restructuring as structural recursion. The form, exact name, and
+semantics of the escape hatch are a known specification gap, not a
+roadmap commitment.
 
 ---
 
@@ -322,6 +345,13 @@ in the standard library cover the cases those features address:
 - `Result a e` for *failure* — the operation might succeed with an `a` or
   fail with an `e`. Used when a parse might fail with a reason, a network
   call might return an error, a precondition might be violated.
+
+Both are ordinary values, not control-flow constructs, because totality
+(§ 8) requires a function's type to fully describe its outcomes. An
+unchecked exception is a hidden return path no type can express; a null
+reference is a hidden inhabitant no type names. Eliminating both makes
+the type checker's claims about what a function can return *complete* —
+the signature is the whole story.
 
 ```i
 type Maybe a
