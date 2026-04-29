@@ -92,7 +92,7 @@ i check src/Main.i
 
 `i check` produces the same diagnostics as `i run` but never reaches the
 evaluator. A clean check exits `0`; a type error exits `1` and prints the
-errors as described in § 4.
+errors as described in § 5.
 
 ### `i fmt <file>` *(planned for later)*
 
@@ -103,7 +103,51 @@ shown throughout this documentation and the `examples/` directory.
 
 ---
 
-## 4. Errors
+## 4. Distributing programs
+
+**v1 has no way to produce a standalone binary.** The implementation is a
+tree-walking interpreter; the only way to run an `i` program is to invoke
+`i run` on its source. To share a program, ship the `.i` files (and the
+`src/` tree if it is multi-file) and tell the recipient to install `i` and
+run them.
+
+This is not a permanent state. Two future commands are planned but not
+present in v1:
+
+### `i build <entry>` *(planned for v2)*
+
+Compiles a program to bytecode. The output is a `.ic` file that runs on
+the `i` bytecode VM, which ships inside the same `i` binary that v1's
+interpreter does.
+
+```
+i build src/Main.i -o my-program.ic   # produces a .ic artifact
+i exec my-program.ic                  # runs it (planned alongside i build)
+```
+
+A `.ic` file is portable across platforms — the VM is the same everywhere
+— but still requires `i` installed to run. The win over `i run` is
+startup time and execution speed; the cost is an extra build step.
+
+### `i compile <entry> --target native` *(planned for v3)*
+
+Compiles a program to a self-contained native executable for the host
+platform. No `i` runtime needed on the target machine; the binary is the
+binary.
+
+```
+i compile src/Main.i --target native -o my-program
+./my-program
+```
+
+The native backend (Cranelift, LLVM, or custom) is undecided — see
+[limitations.md § 5](limitations.md) and the Known TBDs at the bottom of
+that doc. Until v3 lands, "produce a binary" means "ship the source and
+expect the recipient to have `i` installed."
+
+---
+
+## 5. Errors
 
 Type errors are the messages you will see most often. They are designed to
 read top-down: what went wrong, where it went wrong, the offending span,
@@ -157,7 +201,7 @@ not a TTY, no progress bars, no spinners.
 
 ---
 
-## 5. Examples
+## 6. Examples
 
 The `examples/` directory at the repo root holds the programs referenced
 throughout this documentation. Each is single-file and self-contained
