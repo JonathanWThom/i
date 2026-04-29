@@ -105,6 +105,20 @@ type Shape
         height : Float
 ```
 
+**Single-payload shorthand.** A variant carrying exactly one anonymous payload may be written with a `:` instead of a field block:
+
+```
+type Maybe a
+    None
+    Some : a            # shorthand for `Some` with a block `value : a`
+
+type Result a, e
+    Ok : a
+    Error : e
+```
+
+This is purely surface sugar. `Some : a` and the block form `Some\n    value : a` produce different access patterns — the shorthand exposes the payload as the variant itself (`Some x` matches `x : a` directly), while the block form exposes a named field (`Some s` gives `s.value : a`). Use the shorthand for variants where the payload has no useful name.
+
 A "record" is a sum with one implicit case. The `Point` type above is sugar for a single-case sum named `Point`.
 
 ### Generics
@@ -167,6 +181,15 @@ p.distance p2                   # method call
 add 3, (mul 4, 5)               # nest → parens for the inner
 result = f Point(x = 0, y = 0)  # construction nested in a call
 ```
+
+**Multi-argument lambdas inside calls require parens.** The same nesting rule applies: when a lambda value passed as an argument has multiple parameters, its `,` separators are indistinguishable from the call's argument separators without grouping.
+
+```
+nums.fold 0, (acc, x -> acc + x)   # multi-arg lambda → parens
+nums.map x -> x * 2                # single-arg lambda → no parens needed
+```
+
+A single-argument lambda has no internal `,` and can be written directly. Anything two-or-more argument needs parens.
 
 The reader rule: `,` is "next argument"; parens group. There is no separate "function-call" operator.
 
@@ -379,20 +402,20 @@ scale = shape, factor ->
 module Parse
     expose parsePoint
 
-use Std.Parse (parseFloat)
+use Std.Float as F
 
 type ParseError
-    NotANumber
     WrongShape
+    BadNumber                       # produced by F.parse
 
 parsePoint = s ->
     parts = s.split ","
     parts match
-        [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
+        [xs, ys]  -> Ok Point(x = F.parse xs?, y = F.parse ys?)
         _         -> Error WrongShape
 ```
 
-The `?` after each `parseFloat` call propagates an `Error ParseError` outward if the parse failed; otherwise unwraps to the `Float`. The compiler still checks every error path is handled.
+The `?` after each `F.parse` call propagates an `Error ParseError` outward if the parse failed; otherwise unwraps to the `Float`. (Note: `F.parse` returns `Result Float Std.Float.ParseError`, which must be either compatible with the function's `ParseError` type or mapped via `mapError`. Real code would handle this; the example elides it for clarity.)
 
 ## Open questions
 
@@ -416,16 +439,22 @@ These have been considered and deferred:
 
 The minimum stdlib v1 must ship:
 
-- `Bool` — `True`, `False`, `and`, `or`, `not`
-- `Int` (= i64), `Float` (= f64) — arithmetic, comparison
-- `Char`, `String` — basic string ops, `split`, `concat` (`++`), `length`
-- `List a` — constructors `Empty` / `Cons`, ops `map`, `filter`, `fold`, `length`, `head : List a -> Maybe a`, `tail`
-- `Maybe a` — `None`, `Some`, `withDefault`
-- `Result a e` — `Ok`, `Error`, plus `?` sugar in the language
-- `IO` effect — `print`, `readLine`, `readFile`, `writeFile`
-- `Ref a` — for the rare case where mutable state is genuinely needed; ops are `! State`
+- `Std.Bool` — `True`, `False`, `and`, `or`, `not`, `xor`
+- `Std.Int` (= i64) — arithmetic via traits, `compare`, `parse : String -> Result Int ParseError`, `toFloat`, `toString`
+- `Std.Float` (= f64) — same shape as `Int`; plus `sqrt`, `pow`, `sin`, `cos`, `parse : String -> Result Float ParseError`
+- `Std.Char` — `toUpper`, `toLower`, `isDigit`, `isAlpha`
+- `Std.String` — `length`, `++` (concat), `split`, `toChars`, `fromChars`, `contains`, `trim`
+- `Std.List a` — constructors `Empty` / `Cons`, ops `map`, `filter`, `fold`, `length`, `reverse`, `head : List a -> Maybe a`, `tail`, `take`, `drop`, `zip`
+- `Std.Maybe a` — `None`, `Some`, `withDefault`, `map`, `andThen`
+- `Std.Result a e` — `Ok`, `Error`, `withDefault`, `map`, `mapError`, `andThen`, plus `?` sugar in the language
+- `Std.IO` — `print`, `println`, `readLine`, `readFile`, `writeFile`. All return `! IO`.
+- `Std.Ref a` — `make`, `get`, `set` for mutable cells; ops are `! State`
+
+**Traits in the prelude** (auto-imported, not in any one module): `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, `Neg`, `Show`. Operators desugar to these. `Show.show : a -> String` is the conversion that `print!` and string-concatenation idioms rely on; every primitive type and most stdlib types have a derived `Show` impl.
 
 Numeric tower stays minimal: only `Int` (i64) and `Float` (f64). Sized integers (`Int8`, `UInt32`, etc.) and arbitrary-precision can be added without breaking changes.
+
+There is no `Std.Parse`. Parsing functions live on the type they parse into (`Std.Int.parse`, `Std.Float.parse`, etc.). Imports look like `use Std.Float (parse)` or `use Std.Float as F` and then `F.parse "3.14"`.
 
 ## What v1 actually is
 
