@@ -13,8 +13,8 @@ will speak for itself.
 
 ## 1. Hello, world
 
-The smallest runnable `i` program is three lines of declaration plus one line
-of body. See `examples/01-hello.i`.
+The smallest runnable `i` program is two lines of declaration plus a tiny
+body. See `examples/01-hello.i`.
 
 ```i
 module Main
@@ -111,6 +111,9 @@ double : Int -> Int
 add    : Int, Int -> Int
 ```
 
+The comma-separated arg types mirror the comma-separated lambda form — `add`
+takes two `Int`s, not an `Int` returning an `Int -> Int`.
+
 Next: bundling values into records.
 
 ---
@@ -119,7 +122,8 @@ Next: bundling values into records.
 
 A record is a `type` block with named fields. Inside the block, `:` introduces
 a field and `=` introduces a method or constant. Methods receive an implicit
-`self`.
+`self` — it is not in the parameter list of the method, it's added because the
+binding lives inside a `type` block.
 
 ```i
 type Point
@@ -129,9 +133,12 @@ type Point
         ((self.x - other.x)^2 + (self.y - other.y)^2)^0.5
 ```
 
+Inside the `type` block, `distance` is shorthand for `Point.distance` — the
+type prefix is implicit on every member. (`^` is the exponentiation operator.)
+
 To construct, apply the type to keyword arguments. Construction parens are
-**required** — the `=` of a kwarg would otherwise collide with the `=` of the
-binding:
+**required** — without them, `Type x = value, ...` is syntactically ambiguous
+with starting a new value binding:
 
 ```i
 p1 = Point(x = 0, y = 0)
@@ -188,7 +195,8 @@ main =
 
 Two new things. The `Shape` type has two cases, `Circle` and `Rect`, each with
 its own fields. And `shape match` is the pattern-match form: write the value,
-then `match`, then an indented block of `pattern -> body` arms.
+then `match`, then an indented block of `pattern -> body` arms. (`show` is a
+stdlib function that converts displayable values to `String`.)
 
 The compiler checks every `match` for exhaustiveness. Forget to handle
 `Rect`, and the program won't build — the error tells you which case you
@@ -242,6 +250,9 @@ parsePoint = s ->
         [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
         _         -> Error WrongShape
 ```
+
+If either `parseFloat` returns `Error`, `parsePoint` returns that same error
+immediately; otherwise the unwrapped values are used to construct the `Point`.
 
 The compiler still checks every error path. `?` is sugar, not an escape hatch.
 
