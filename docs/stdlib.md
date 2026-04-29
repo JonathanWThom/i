@@ -380,10 +380,34 @@ larger than the length; returns `Empty` if `n <= 0`.
 `xs.drop n` is everything after the first `n` elements. Returns
 `Empty` if `n` exceeds the length.
 
-### `zip : List a, List b -> List (a, b)`
+### `zip : List a, List b -> List (Pair a b)`
 
 Pair elements positionally. The result has the length of the shorter
-input.
+input. `Pair` is `Std.Pair` (see below) — used here because v1 has no
+tuples.
+
+---
+
+## `Std.Pair`
+
+A two-element grouping with named fields, used where a tuple would be
+natural in other languages.
+
+### `Pair a, b`
+
+```
+type Pair a, b
+    first  : a
+    second : b
+```
+
+### `make : a, b -> Pair a b`
+
+Construct a pair: `make x, y` is equivalent to `Pair(first = x, second = y)`.
+
+### `swap : Pair a b -> Pair b a`
+
+Swap the two fields.
 
 ---
 

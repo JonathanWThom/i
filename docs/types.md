@@ -218,7 +218,8 @@ body cannot inspect or branch on the type. If you want behavior that
 varies by type, use a trait (see § 7).
 
 A function that uses *both* `a` and `b` constrains them independently:
-`zip : List a, List b -> List (a, b)` (from [`Std.List`](stdlib.md)) takes
+`zip : List a, List b -> List (Pair a b)` (from [`Std.List`](stdlib.md);
+`Pair` is the record type `Std.Pair` since v1 has no tuples) takes
 two lists whose element types are decided independently. Same letter means
 same type across the signature; different letters mean independently
 inferred.
