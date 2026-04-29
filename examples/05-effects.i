@@ -1,7 +1,7 @@
 module Main
     expose main
 
-# pure — Int, Int -> Int
+# pure — Int -> Int
 double = n -> n * 2
 
 # pure — Int -> Int

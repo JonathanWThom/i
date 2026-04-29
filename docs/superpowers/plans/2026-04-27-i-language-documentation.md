@@ -605,7 +605,7 @@ time NOT thinking about effects; the doc should make this clear.
 module Main
     expose main
 
-# pure — Int, Int -> Int
+# pure — Int -> Int
 double = n -> n * 2
 
 # pure — Int -> Int
