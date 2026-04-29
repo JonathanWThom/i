@@ -1,0 +1,22 @@
+[package]
+name = "i-lang"
+version = "0.1.0"
+edition = "2021"
+description = "An exercise in sparse-by-default language design"
+license = "MIT"
+repository = "https://github.com/jonathanthom/i-lang"
+readme = "README.md"
+
+[[bin]]
+name = "i"
+path = "src/main.rs"
+
+[lib]
+name = "i_lang"
+path = "src/lib.rs"
+
+[dependencies]
+# none yet — Plan 2 introduces parser, error reporting
+
+[dev-dependencies]
+# none yet
