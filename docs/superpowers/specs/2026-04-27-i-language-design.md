@@ -1,6 +1,8 @@
-# Pare — Language Design
+# i — Language Design
 
-**Working name:** Pare (rename freely). The character of the language is "pared back to essentials."
+**Name:** `i`. One letter. The language is itself an exercise in the proposition that less is more.
+
+**File extension:** `.i`. (Conflict note: GCC's preprocessor also emits `.i` files. Won't matter for a hobby/learning language; would matter for production tooling.)
 
 **Status:** Initial design, brainstorm complete.
 
@@ -234,7 +236,21 @@ parseInt "42" match
     Error err -> ...
 ```
 
-A `?` postfix operator (TBD — not yet specified) may be added as sugar for "early-return on Error" inside functions whose return type is also a `Result`. Open question.
+### `?` early-exit sugar
+
+`expr?` is sugar for "if `expr` is `Error e`, return `Error e` from the enclosing function; otherwise unwrap to the `Ok` value." It only type-checks inside a function whose return type is a `Result _ e` with the same error type.
+
+```
+parsePoint = s ->
+    parts = s.split ","
+    parts match
+        [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
+        _         -> Error WrongShape
+```
+
+Without `?`, that body would need nested `match` for every fallible call. With `?`, error plumbing collapses to a single character. The compiler still verifies every error path — `?` is sugar, not an escape hatch.
+
+There is no `return` keyword. The function's value is the value of its body expression. Early-exit on errors goes through `?`. Early-exit on success would go through restructuring the expression — and is rare enough that adding a keyword for it is not worth the surface cost.
 
 ## Totality
 
@@ -372,30 +388,44 @@ type ParseError
 parsePoint = s ->
     parts = s.split ","
     parts match
-        [xs, ys] ->
-            x = parseFloat xs match
-                Ok n     -> n
-                Error _  -> return Error NotANumber
-            y = parseFloat ys match
-                Ok n     -> n
-                Error _  -> return Error NotANumber
-            Ok Point(x = x, y = y)
-        _ ->
-            Error WrongShape
+        [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
+        _         -> Error WrongShape
 ```
 
-(The `return` keyword above is provisional — see open questions.)
+The `?` after each `parseFloat` call propagates an `Error ParseError` outward if the parse failed; otherwise unwraps to the `Float`. The compiler still checks every error path is handled.
 
-## Open questions / deferred
+## Open questions
 
-- **`?` early-return sugar for `Result`.** Desirable; not yet specified. Without it, error-plumbing code is verbose (see `parsePoint` above).
-- **`return` keyword inside `match` arms.** Used in the example above as a way to escape the surrounding function on an error. May be replaced by `?` sugar; may be removed entirely; not yet decided.
-- **Concurrency model.** Committed to "no shared mutable state across threads." Actor-based or STM-based — undecided.
-- **Trait coherence rules.** Single global instance per type/trait pair (Haskell-style)? Or module-scoped instances (Rust-style orphan rules)? Not yet decided.
-- **Numeric tower.** `Int`, `Float`, `Nat`, sized integers, arbitrary precision — not yet decided. Default to `Int = i64` and `Float = f64` for v1.
-- **Record row polymorphism.** Functions that work on "any record with an `x` field" — useful and sparse-feeling, but adds complexity. Not in v1.
-- **Compile target.** Native via LLVM? WASM? Bytecode VM? Not yet decided.
-- **Standard library shape.** Just sketched (`Std.IO`, `Std.Parse`, `Maybe`, `Result`, `List`); needs full enumeration before implementation.
+The following remain undecided. I've recorded recommendations next to each; the design is not finalized until they're picked.
+
+- **Concurrency model.** Committed to "no shared mutable state across threads," but the mechanism is open. *Recommendation:* actor-based message passing for v2 (out of v1 scope; v1 is single-threaded).
+- **Trait coherence.** Haskell-style global single-instance vs Rust-style orphan rules. *Recommendation:* Haskell-style global. One instance per (trait, type) pair, anywhere in the program. Simpler to teach; orphan-instance hazards are rare in a small ecosystem.
+- **Compile target.** Out of v1 scope (v1 is interpreter only). For v2 the realistic options are bytecode VM, WASM, or LLVM native. *Recommendation:* bytecode VM for v2, native for v3.
+
+## Explicitly out of v1
+
+These have been considered and deferred:
+
+- **Tuples.** Records cover the same use cases with named fields and prevent positional-confusion bugs. Adding tuples doubles the "data shape" surface for marginal benefit.
+- **Row polymorphism.** "Any record with an `x : Float` field" is genuinely sparse-feeling but expensive in the type checker. Revisit if the language outgrows nominal records.
+- **Macros / metaprogramming.** Conflicts with "fits in your head."
+- **Linear / affine / dependent types.** Excluded earlier under safety choices.
+- **Lazy evaluation.** Strict by default; `Lazy a` library type if needed.
+
+## v1 standard library
+
+The minimum stdlib v1 must ship:
+
+- `Bool` — `True`, `False`, `and`, `or`, `not`
+- `Int` (= i64), `Float` (= f64) — arithmetic, comparison
+- `Char`, `String` — basic string ops, `split`, `concat` (`++`), `length`
+- `List a` — constructors `Empty` / `Cons`, ops `map`, `filter`, `fold`, `length`, `head : List a -> Maybe a`, `tail`
+- `Maybe a` — `None`, `Some`, `withDefault`
+- `Result a e` — `Ok`, `Error`, plus `?` sugar in the language
+- `IO` effect — `print`, `readLine`, `readFile`, `writeFile`
+- `Ref a` — for the rare case where mutable state is genuinely needed; ops are `! State`
+
+Numeric tower stays minimal: only `Int` (i64) and `Float` (f64). Sized integers (`Int8`, `UInt32`, etc.) and arbitrary-precision can be added without breaking changes.
 
 ## What v1 actually is
 
