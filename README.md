@@ -1,8 +1,8 @@
 # i
 
-A tiny, statically typed, compiled-ish language whose surface is as sparse as
-possible without giving up safety. Think Roc-grade safety in a syntax pared
-down to four operators.
+A small, statically typed, compiled-ish language. The surface is as sparse as
+I could make it without giving up safety. Think Roc-grade safety in a syntax
+pared down to four operators.
 
 ```i
 type Point
@@ -19,19 +19,20 @@ main =
 
 ## What this is
 
-A learning project, designed as a real language. The goal is something usable
-at the end — not a toy. The design priorities, in order:
+A learning project I'm treating as a real language. I want it to be usable at
+the end, not a toy. Priorities, in order:
 
-1. **Aesthetic minimalism.** A program looks like the idea it expresses.
-2. **Fits in your head.** The whole core can be learned in an afternoon.
-3. **Ergonomic.** Sparse to *help* you, not to puzzle you.
+1. **Aesthetic minimalism.** The program on screen should look like the idea
+   you have in your head.
+2. **Fits in your head.** You should be able to learn the whole core in an
+   afternoon.
+3. **Ergonomic.** Sparse to help, not to puzzle.
 
 ## Status
 
-**Documentation complete.** The end-state user docs are written; every
-example program in `examples/` is a complete, syntactically valid `i`
-program — though none of them are runnable yet because the implementation
-doesn't exist.
+**Documentation complete.** The end-state user docs are written. Every
+program in `examples/` is a complete, syntactically valid `i` file. None of
+them run yet, because the compiler isn't built.
 
 **Implementation: not started.** Plan 2 (lexer + parser) is next.
 

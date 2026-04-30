@@ -1,50 +1,49 @@
 # The type system
 
-A deep dive on what the type checker does, what guarantees it provides, and
-how the pieces fit together. For surface forms, see [syntax.md](syntax.md);
-for a guided introduction, see [tour.md](tour.md). This manual is the *why*.
+A deep dive on what the type checker does, what it guarantees, and how the
+pieces fit together. For surface forms, see [syntax.md](syntax.md). For a
+guided introduction, see [tour.md](tour.md). This manual is the *why*.
 
 ---
 
 ## 1. What "strongly typed" means here
 
-Every value in `i` has a static type known at compile time. There are no
-runtime type errors, no implicit conversions, and no null. A program that
-type-checks is, by construction, free of the bug families those features
-admit:
+Every value in `i` has a static type known at compile time. No runtime type
+errors, no implicit conversions, no null. A program that type-checks can't
+hit the bugs those features let in:
 
-- Types that share a representation are not interchangeable. An `Int` is
-  not a `Float`; a `UserId` is not an `OrderId` (see § 6).
-- A value cannot become "nothing" at runtime. Absence is the separate type
+- Types that share a representation aren't interchangeable. An `Int` is not
+  a `Float`. A `UserId` is not an `OrderId` (see § 6).
+- A value can't become "nothing" at runtime. Absence is the separate type
   `Maybe a` (see § 9), and the compiler forces you to handle `None` before
-  using the inner value.
-- A function cannot silently fail or throw. Failure is `Result a e`, and
-  again both arms must be handled.
+  you can touch the inner value.
+- A function can't silently fail or throw. Failure is `Result a e`, and
+  again, both arms have to be handled.
 
-There are no automatic coercions — not even `Int` to `Float`. To convert,
+There are no automatic coercions, not even `Int` to `Float`. To convert,
 you call `Std.Int.toFloat` explicitly. The type checker prefers a hard
-error to a guessed conversion, on the principle that conversions you
-didn't write are conversions you didn't think about.
+error to a guessed conversion, on the theory that conversions you didn't
+write are conversions you didn't think about.
 
-The whole system is nominal: two types with identical structure are still
-distinct unless they are the *same* declared type. There is no structural
-subtyping, no row polymorphism, and no inheritance.
+The whole system is nominal. Two types with identical structure are still
+distinct unless they're the *same* declared type. No structural subtyping,
+no row polymorphism, no inheritance.
 
 ---
 
 ## 2. Type inference scope
 
-You almost never write a type. Inference handles the interior of a function;
-you write a type only at interfaces — module-exposed names, trait
-declarations — or when inference can't decide on its own.
+You almost never write a type. Inference handles the interior of a function.
+You only write a type at interfaces (module-exposed names, trait
+declarations), or when inference can't decide on its own.
 
-**What inference produces.** The algorithm is Hindley-Milner-style: a
-single bottom-up pass with let-polymorphism at binding sites. Top-level
-bindings are *generalized* — `id = x -> x` at the top level gets the
-polymorphic type `a -> a` and can be used at any type. Local bindings
-inside a function body are *not* generalized; they are monomorphic,
-fixed at their first use. Mutual recursion is allowed within a single
-let-group, and a module's top-level bindings form one such group.
+**What inference produces.** The algorithm is Hindley-Milner-style: a single
+bottom-up pass with let-polymorphism at binding sites. Top-level bindings get
+*generalized*. `id = x -> x` at the top level gets the polymorphic type
+`a -> a` and works at any type. Local bindings inside a function body are
+*not* generalized; they're monomorphic, fixed at their first use. Mutual
+recursion is allowed within a single let-group, and a module's top-level
+bindings form one such group.
 
 Trait usage propagates as constraints into the inferred signature. The
 notation `Constraint => ...` reads "for any type satisfying this
@@ -65,8 +64,8 @@ The rule of thumb:
 - **Record fields and variant payloads:** required, because they have no
   body to infer from.
 
-When inference cannot find a type — usually because a polymorphic function
-is used at no concrete type — the error names the variable and the
+When inference can't find a type — usually because a polymorphic function
+isn't used at any concrete type — the error names the variable and the
 location. The fix is an annotation at that site, not a global hint.
 
 ```i
@@ -83,8 +82,8 @@ double : Int -> Int               # explicit at the interface
 double = n -> n * 2
 ```
 
-Module-exposed names get inferred types unchanged; writing the signature
-is still recommended, because it pins the interface against accidental
+Module-exposed names get inferred types unchanged. Writing the signature
+is still worth it, because it pins the interface against accidental
 widening.
 
 ---
@@ -104,26 +103,25 @@ type Point
         ((self.x - other.x)^2 + (self.y - other.y)^2)^0.5
 ```
 
-`distance` here binds `Point.distance`. `self` is not in the parameter list;
+`distance` here binds `Point.distance`. `self` isn't in the parameter list;
 the binding's location supplies it.
 
-Construction and update share one surface. A type applied to keyword
-arguments constructs; an instance applied to keyword arguments produces a
-copy with overrides. Both express the same idea — "an instance with
-these field values" — and differ only in where the unsupplied fields
-come from: you must give all of them at construction; the prior instance
-supplies them on update. Construction parens are required (not just
-grouping) because the inner `=` of a kwarg would otherwise collide with
-the outer binding `=`.
+Construction and update share one surface. A type applied to kwargs
+constructs; an instance applied to kwargs produces a copy with overrides.
+Both express the same idea — "an instance with these field values" — and
+differ only in where the unsupplied fields come from. At construction you
+have to give all of them. On update, the prior instance fills them in.
+Construction parens are required (not just grouping) because the inner `=`
+of a kwarg would otherwise collide with the outer binding `=`.
 
 ```i
 p1 = Point(x = 0, y = 0)        # construct
 p2 = p1(x = 5)                  # copy with x = 5
 ```
 
-Every field of a record must be supplied at construction. There are no
-default values; if you want one, write a separate constructor function. A
-record is internally a sum type with one implicit case — see § 4.
+Every field of a record has to be supplied at construction. No default
+values; if you want one, write a separate constructor function. Internally,
+a record is a sum type with one implicit case (see § 4).
 
 ---
 
@@ -147,18 +145,17 @@ type Maybe a
 ```
 
 The shorthand and block forms have different access patterns. `Some : a`
-exposes the payload as the variant itself — `Some x` in a pattern binds
+exposes the payload as the variant itself: `Some x` in a pattern binds
 `x : a` directly. The block form `Some\n    value : a` exposes a named
-field — `Some s` in a pattern gives `s.value : a`. Use the shorthand when
+field, so `Some s` in a pattern gives `s.value : a`. Use the shorthand when
 the payload has no useful name; use the block form when the payload is a
 record-like cluster of named fields.
 
-**Exhaustiveness checking.** Every `match` on a sum type must cover every
+**Exhaustiveness checking.** Every `match` on a sum type has to cover every
 constructor. A `match` that omits a case is a compile-time error, not a
-warning, and the error names the missing constructor. There is no
-fallthrough; arms do not "fall through" to subsequent ones, and there is
-no implicit default. When you genuinely want a default, use a wildcard
-arm:
+warning, and the error names the missing constructor. No fallthrough — arms
+don't fall through to the next one — and no implicit default. When you
+genuinely want a default, use a wildcard arm:
 
 ```i
 shape match
@@ -168,12 +165,12 @@ shape match
 ```
 
 Constructor patterns also support positional binding in field-declaration
-order — `Rect w, h` binds `w = width` and `h = height`. Both positional
-and named-field forms are accepted; pick whichever reads better.
+order. `Rect w, h` binds `w = width` and `h = height`. Both positional and
+named-field forms are accepted; pick whichever reads better.
 
-This is the language's most-relied-on safety property. You can refactor a
+This is the safety property the language leans on most. You can refactor a
 sum type — add a variant, rename one — and the compiler will list every
-`match` that needs updating. The cost of one extra arm at every match site
+`match` that needs updating. The price of one extra arm at every match site
 buys mechanical safety on every change to the data.
 
 ---
@@ -181,9 +178,9 @@ buys mechanical safety on every change to the data.
 ## 5. Generics
 
 Lowercase identifiers in a type position are type variables. Uppercase
-identifiers are concrete types. There is no introducing keyword for a type
-variable; the *first* lowercase use in a signature or type declaration
-binds it, and subsequent uses refer to the same variable.
+identifiers are concrete types. There's no introducing keyword for a type
+variable: the *first* lowercase use in a signature or type declaration
+binds it, and later uses refer to the same variable.
 
 ```i
 type List a
@@ -211,11 +208,11 @@ identity : a -> a
 identity = x -> x
 ```
 
-The `a` in the signature is a type variable — the function works for every
-type. At each call site, `a` is unified with the argument's type. There is
+The `a` in the signature is a type variable; the function works for every
+type. At each call site, `a` is unified with the argument's type. There's
 no "value of type `a`" in the body — generics are parametric, meaning the
-body cannot inspect or branch on the type. If you want behavior that
-varies by type, use a trait (see § 7).
+body can't inspect or branch on the type. If you want behavior that varies
+by type, use a trait (see § 7).
 
 A function that uses *both* `a` and `b` constrains them independently:
 `zip : List a, List b -> List (Pair a b)` (from [`Std.List`](stdlib.md);
@@ -240,9 +237,9 @@ type OrderId = Int
 ```
 
 `UserId` and `OrderId` are *distinct types*, even though both wrap `Int`.
-A function expecting a `UserId` will reject an `OrderId`, an `Int`, and
-anything else. This is the type system's mechanism for tagging meaning
-onto a representation:
+A function expecting `UserId` will reject `OrderId`, plain `Int`, and
+anything else. This is how the type system tags meaning onto a
+representation:
 
 ```i
 lookupUser : UserId -> Maybe User
@@ -252,12 +249,12 @@ lookupUser uid = ...
 lookupUser someOrderId
 ```
 
-`i`'s implementation is expected to compile newtypes to zero-cost
-wrappers — no boxing, no allocation for a newtype that wraps a primitive
-— though the spec does not formally pin the runtime representation.
+The plan is for the compiler to lower newtypes to zero-cost wrappers — no
+boxing, no allocation when the wrapped type is a primitive — though the
+spec doesn't formally pin the runtime representation.
 
-The block form is the long-hand equivalent and is useful when you want to
-add methods to the wrapper:
+The block form is the long-hand equivalent. Useful when you want to add
+methods to the wrapper:
 
 ```i
 type UserId
@@ -265,8 +262,8 @@ type UserId
     toString = -> Std.Int.toString self.value
 ```
 
-This is the same nominal mechanism — `UserId` is still distinct from
-`Int` — with room for a `toString` method or other operations.
+Same nominal mechanism (`UserId` is still distinct from `Int`), with room
+for a `toString` method or other operations.
 
 ---
 
@@ -304,51 +301,46 @@ trait's signature.
 
 **Coherence.** `i` follows Haskell-style global coherence: at most one
 `impl Trait Type` exists in the entire program for each `(trait, type)`
-pair. There is no orphan-instance escape hatch. Every call site
-dispatches to the same implementation regardless of import path — at the
-cost of being unable to add an impl for a trait *and* a type both
-defined elsewhere. For a small ecosystem this is the right trade for
-"fits in your head."
+pair. There's no orphan-instance escape hatch. Every call site dispatches
+to the same implementation regardless of import path. The cost is that you
+can't add an impl for a trait *and* a type both defined elsewhere. For a
+small ecosystem, that's the right trade for "fits in your head."
 
-A type can implement any number of traits. There is no inheritance and
-no trait extension; the convention is that related impls (`Ord` and
-`Eq`) are provided together.
+A type can implement any number of traits. No inheritance, no trait
+extension. By convention, related impls like `Ord` and `Eq` ship together.
 
 ---
 
 ## 8. Totality
 
 Every function in `i` is total: it terminates on every input and produces
-a value of its declared return type. Three rules together enforce this:
+a value of its declared return type. Three rules enforce this together:
 
 1. **Exhaustive pattern matching.** A `match` that misses a case fails to
    compile (see § 4). A function whose body is a `match` therefore handles
    every possible input.
 2. **No partial standard library functions.** `List.head` returns
-   `Maybe a`, not `a`; the empty case has nowhere to crash.
+   `Maybe a`, not `a`. The empty case has nowhere to crash.
 3. **Termination checking on recursion.** A recursive function whose
    recursive calls are made on *structurally smaller* arguments — a
-   sub-list of the input list, the inner of a `Some`, etc. — is accepted.
-   General recursion (e.g., `f n -> f (n + 1)` or recursion on a value the
-   compiler can't see shrinks) requires an explicit `corecursive`
-   annotation.
+   sub-list of the input list, the inner of a `Some`, and so on — is
+   accepted. General recursion (`f n -> f (n + 1)`, or recursion on a
+   value the compiler can't see shrinking) requires an explicit
+   `corecursive` annotation.
 
-   **Note:** v1 does not yet specify the `corecursive` annotation in
-   detail. Structural recursion is what v1 accepts; the form and exact
-   semantics of the explicit escape hatch are TBD. See
-   [limitations.md](limitations.md).
+   **Note:** v1 doesn't yet pin down the `corecursive` annotation. v1
+   accepts structural recursion; the form and exact semantics of the
+   escape hatch are TBD. See [limitations.md](limitations.md).
 
 The payoff is large. A total function's type signature is its complete
 specification: given an input of the argument type, the function produces
-an output of the result type, full stop — no third "or it crashes"
-outcome.
+an output of the result type, full stop. No third "or it crashes" outcome.
 
-The cost is also real. Algorithms that genuinely need general recursion
-(some graph traversals, some search procedures) will need a
-`corecursive` escape hatch (TBD); until then, expressing them requires
-restructuring as structural recursion. The form, exact name, and
-semantics of the escape hatch are a known specification gap, not a
-roadmap commitment.
+The cost is real too. Algorithms that genuinely need general recursion
+(some graph traversals, some search procedures) will need the
+`corecursive` escape hatch (TBD). Until then, expressing them requires
+restructuring as structural recursion. The form, exact name, and semantics
+of the escape hatch are a known spec gap, not a roadmap commitment.
 
 ---
 
@@ -366,10 +358,10 @@ in the standard library cover the cases those features address:
 
 Both are ordinary values, not control-flow constructs, because totality
 (§ 8) requires a function's type to fully describe its outcomes. An
-unchecked exception is a hidden return path no type can express; a null
-reference is a hidden inhabitant no type names. Eliminating both makes
-the type checker's claims about what a function can return *complete* —
-the signature is the whole story.
+unchecked exception is a hidden return path no type can express. A null
+reference is a hidden inhabitant no type names. Removing both makes the
+type checker's claims about what a function can return *complete*: the
+signature is the whole story.
 
 ```i
 type Maybe a
@@ -381,11 +373,11 @@ type Result a, e
     Error : e
 ```
 
-The compiler treats both as ordinary sum types. There is no special
+The compiler treats both as ordinary sum types. There's no special
 "unwrap" operation; you `match` on them like any other sum, and the
 exhaustiveness checker forces you to handle both arms before you can use
-the inner value. This is the safety mechanism that null and unchecked
-exceptions in other languages do not have.
+the inner value. That's the safety mechanism null and unchecked exceptions
+in other languages don't have.
 
 For a chain of fallible calls, the `?` early-exit operator collapses the
 plumbing. `expr?` returns `Error e` from the enclosing function if `expr`
@@ -410,8 +402,8 @@ for the surface form.
 ## 10. Type signatures: when to write them
 
 Inference covers most cases. The defensible places to write a signature
-are the boundaries — where the type should be the contract rather than
-a side effect of the body.
+are the boundaries, where the type should be the contract rather than a
+side effect of the body.
 
 **Write a signature for:**
 
@@ -432,9 +424,9 @@ a side effect of the body.
 - Lambda parameters in a context that determines them.
 - Short internal helpers whose body is the documentation.
 
-Inference recovers what you would otherwise write down; *writing* a
-type pins a contract you want to preserve. Use both: write types where
-contracts matter, let inference handle the rest.
+Inference recovers what you would otherwise write down. *Writing* a type
+pins a contract you want to preserve. Use both: write types where contracts
+matter, let inference handle the rest.
 
 ---
 

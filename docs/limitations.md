@@ -1,14 +1,14 @@
 # Limitations
 
-What `i` v1 does not do, why, and what it would take to add. Source of
-truth for "things that aren't in v1" and "things that aren't decided
-yet." See [syntax.md](syntax.md) and [stdlib.md](stdlib.md) for what is in.
+What `i` v1 doesn't do, why, and what it would take to add. The source of
+truth for "things that aren't in v1" and "things that aren't decided yet."
+See [syntax.md](syntax.md) and [stdlib.md](stdlib.md) for what's in.
 
 ---
 
 ## 1. No tuples
 
-Anonymous positional product types are not in the language.
+Anonymous positional product types aren't in the language.
 Records cover the same use cases with named fields, and a second form
 for the same job works against "fits in your head."
 Lifting this means adding tuple syntax, tuple patterns, and a
@@ -18,44 +18,44 @@ parametric `Tuple a b` in the prelude.
 
 A function taking `{ name: Text }` accepts only that exact record type,
 not "any record with a `name` field."
-The v1 inference is plain Hindley-Milner with traits; row variables
-noticeably complicate the unifier and error messages.
-Lifting this requires row-typed records in the type grammar and
+v1 inference is plain Hindley-Milner with traits. Row variables
+noticeably complicate the unifier and the error messages.
+Lifting this requires row-typed records in the type grammar and an
 extension to the unifier.
 
 ## 3. No macros or metaprogramming
 
-No macro system, no quasiquotation, no compile-time evaluation;
+No macro system, no quasiquotation, no compile-time evaluation.
 `derive` is limited to built-in trait derivations.
-Macros let library authors invent local dialects, which conflicts with
-the goal of one canonical reading per program.
+Macros let library authors invent local dialects, which fights the goal
+of one canonical reading per program.
 Lifting this requires a macro expansion phase, a hygiene model, and a
 stable AST surface.
 
 ## 4. No dependent, refinement, or linear types
 
-Types do not depend on values, cannot carry predicates
-(`{ x: Int | x > 0 }`), and cannot enforce single-use constraints.
-Each is a research-grade extension; any of them would push v1 past
+Types don't depend on values, can't carry predicates
+(`{ x: Int | x > 0 }`), and can't enforce single-use constraints.
+Each is a research-grade extension. Any of them would push v1 past
 "fits in your head."
-Lifting any one would mean a new type theory, a new checker, and a new
-error story.
+Lifting any one means a new type theory, a new checker, and a new error
+story.
 
 ## 5. No native code generation
 
-The v1 implementation is a tree-walking interpreter; no bytecode VM,
+The v1 implementation is a tree-walking interpreter. No bytecode VM,
 no JIT, no AOT native compiler.
-The v1 goal is "design correct, surface stable"; codegen locks in
+The v1 goal is "design correct, surface stable." Codegen locks in
 semantics and is deferred.
 Lifting this means a bytecode VM (v2) and later a native backend (v3).
 
 ## 6. No concurrency
 
-The interpreter is single-threaded; no green threads, async/await,
+The interpreter is single-threaded. No green threads, async/await,
 channels, or shared-memory primitives.
-Picking a concurrency model is load-bearing; v1 ships effects-with-
-handlers first (see [effects.md](effects.md)) so v2 concurrency can be
-expressed as an effect.
+Picking a concurrency model is load-bearing, so v1 ships
+effects-with-handlers first (see [effects.md](effects.md)). That way v2
+concurrency can be expressed as an effect.
 Lifting this means choosing a model (the spec earmarks actors) and
 implementing it on the v2 VM.
 
@@ -72,52 +72,52 @@ Lifting any means a per-module spec round and adding under `Std.*`.
 No way to call Rust or C from `i`, and no way to expose `i` values to
 a host runtime.
 An FFI surface pins down memory representation, ownership, and effect
-attribution, none of which v1 commits to before the VM exists.
+attribution. v1 doesn't commit to any of those before the VM exists.
 Lifting this requires a stable value representation, a calling
 convention, and a safety story for cross-boundary effects.
 
 ## 9. No package manager
 
 No library registry, no `i add <package>`, no manifest for external
-dependencies; a project is a single repo.
-A package manager bakes in module identity, versioning, and trust, none
-of which should lock in before the language surface is stable.
+dependencies. A project is a single repo.
+A package manager bakes in module identity, versioning, and trust. None
+of those should lock in before the language surface is stable.
 Lifting this requires a registry, a resolver, a lockfile format, and a
 versioning policy.
 
 ## 10. `?` only works inside `Result`-returning functions
 
-The `?` postfix is only valid in a function returning `Result a e`; it
-is not a general early-exit operator.
-Generalizing `?` to arbitrary monads requires either ad-hoc desugaring
-or `do`-notation, both of which work against keeping the language small.
-Lifting this means adding `do`-notation and a `Monad` trait, on the
+The `?` postfix is only valid in a function returning `Result a e`. It
+isn't a general early-exit operator.
+Generalizing `?` to arbitrary monads needs either ad-hoc desugaring or
+`do`-notation, and both fight against keeping the language small.
+Lifting this means adding `do`-notation and a `Monad` trait. On the
 table for v2.
 
 ## 11. No `return`, `break`, or `continue`
 
-No early-exit keywords; a function's value is the value of its body,
+No early-exit keywords. A function's value is the value of its body,
 and loops are folds over lists.
 Removing non-local control flow keeps every expression a value, which
 the type and effect systems lean on.
 Lifting this requires statement semantics or first-class delimited
-continuations, both of which change the evaluation model.
+continuations, and both would change the evaluation model.
 
 ## 12. No lazy evaluation
 
-Every binding and argument is evaluated strictly; no `lazy`, no thunks,
+Every binding and argument is evaluated strictly. No `lazy`, no thunks,
 no call-by-need.
 Strictness keeps cost and effect ordering predictable, which matters
 more here than the gains of laziness.
 Lifting this means a `lazy` form or a library `Lazy a` type with
-explicit `force`; the latter is the likely path.
+explicit `force`. The latter is the more likely path.
 
 ---
 
 ## Known TBDs
 
-Items the spec has flagged as undecided. Expected to be pinned before
-the corresponding feature ships, not before v1 freezes.
+Items the spec has flagged as undecided. These get pinned before the
+matching feature ships, not before v1 freezes.
 
 - **Concurrency mechanism** — actor model is the working assumption;
   channels, structured concurrency, and effect-based scheduling are

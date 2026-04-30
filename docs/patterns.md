@@ -1,8 +1,8 @@
 # Pattern matching
 
-A focused reference on `match` — the form, the pattern kinds, and the rules
+A focused reference on `match`: the form, the pattern kinds, and the rules
 the type checker enforces around them. For surface syntax in lookup form,
-see [syntax.md § 7](syntax.md); for the introductory walkthrough, see
+see [syntax.md § 7](syntax.md). For the introductory walkthrough, see
 [tour.md § 5](tour.md). This manual is the *why*.
 
 ---
@@ -20,14 +20,14 @@ shape match
     Rect w, h   -> w * h
 ```
 
-`match` is an *expression*: every arm yields a value, every arm's body has
-the same type, and the type of the `match` is that common type. There is no
-fallthrough — only one arm runs — and no implicit default; the compiler
+`match` is an *expression*. Every arm yields a value, every arm's body has
+the same type, and the type of the `match` is that common type. No
+fallthrough (only one arm runs) and no implicit default. The compiler
 requires the listed arms to cover the matched type's full set of cases
 (see § 3).
 
 `match` works on any sum type. Records are sums with one implicit case, so
-the same form destructures them — see "Record destructuring" below.
+the same form destructures them; see "Record destructuring" below.
 
 ---
 
@@ -38,7 +38,7 @@ describes the leaf form.
 
 ### Literal pattern
 
-A literal value matches values equal to it. The literal's type must be the
+A literal value matches values equal to it. The literal's type has to be the
 type being matched.
 
 ```i
@@ -49,8 +49,8 @@ n match
 ```
 
 `Bool`, `String`, and `Float` literals match the same way. Literal
-patterns are not exhaustive on their own — there is no way to enumerate
-every `Int` — so a literal-only match almost always needs a wildcard arm.
+patterns aren't exhaustive on their own — you can't enumerate every `Int`
+— so a literal-only match almost always needs a wildcard arm.
 
 ### Identifier pattern
 
@@ -63,8 +63,8 @@ x match
     n   -> n + 1
 ```
 
-An identifier arm is equivalent to a wildcard arm for exhaustiveness
-purposes — the difference is whether the value is named.
+For exhaustiveness, an identifier arm is the same as a wildcard arm. The
+only difference is whether the value gets a name.
 
 ### Wildcard pattern
 
@@ -90,11 +90,10 @@ shape match
 ```
 
 Constructor patterns accept either positional or named-field binding.
-`Rect w, h` binds `w = width` and `h = height` — fields in declaration
-order — while `Rect(width = w, height = h)` names them explicitly. Both
-forms are accepted; positional reads cleaner for small variants, named
-for many-field ones. See [types.md § 4](types.md) for the field-order
-rule.
+`Rect w, h` binds `w = width` and `h = height` (fields in declaration
+order); `Rect(width = w, height = h)` names them explicitly. Both forms
+work. Positional reads cleaner for small variants, named for many-field
+ones. See [types.md § 4](types.md) for the field-order rule.
 
 For a variant declared with the single-payload shorthand `Variant : T`,
 the pattern binds the payload directly: `Some v` binds `v : a`, not
@@ -113,10 +112,10 @@ parts match
     _       -> "more"
 ```
 
-v1 has not yet specified rest patterns and guards. They will be added in a
-later spec revision. Until then, walking a list of unknown length goes
-through the constructor form (`Empty` and `Cons` from
-[`Std.List`](stdlib.md)) or through `head`/`tail`/`map`/`fold`.
+Rest patterns and guards aren't specified in v1; they'll come in a later
+spec revision. Until then, walking a list of unknown length goes through
+the constructor form (`Empty` and `Cons` from [`Std.List`](stdlib.md)) or
+through `head`/`tail`/`map`/`fold`.
 
 ### Record destructuring
 
@@ -136,10 +135,10 @@ form is exhaustive without a wildcard.
 
 ## 3. Exhaustiveness
 
-The compiler rejects any `match` that does not cover every constructor of
-the matched type. An omitted case is a *compile-time error*, not a
-warning, and the error names the missing constructor. There is no
-fallthrough and no implicit default arm.
+The compiler rejects any `match` that doesn't cover every constructor of
+the matched type. An omitted case is a *compile-time error*, not a warning,
+and the error names the missing constructor. No fallthrough, no implicit
+default arm.
 
 ```i
 type Shape
@@ -165,20 +164,19 @@ error[non-exhaustive-match]: missing case `Rect`
 note: `Shape` has variants `Circle` and `Rect`; only `Circle` is matched
 ```
 
-A wildcard or identifier arm supplies the default when you genuinely want
-one. An always-redundant arm — one whose pattern can never match given
-earlier arms — is reported as a warning.
+A wildcard or identifier arm supplies the default when you actually want
+one. An always-redundant arm (one whose pattern can never match given
+earlier arms) is reported as a warning.
 
-Exhaustiveness is the language's most-relied-on safety property. Adding a
-variant to a sum type forces the compiler to list every `match` site that
-needs an arm for the new case, turning a refactor into a mechanical
+Exhaustiveness is the safety property the language leans on most. Adding
+a variant to a sum type forces the compiler to list every `match` site
+that needs an arm for the new case, turning a refactor into a mechanical
 checklist. See [types.md § 4](types.md) for the sum-type-design view.
 
 The check operates at the level of constructors, not literal values. A
-`match` on `Int` with arms `0`, `1`, `2` is not exhaustive — the compiler
-cannot enumerate every `Int` — and requires a wildcard arm. The same
-applies to `String`, `Float`, and any type whose value space is not
-enumerated.
+`match` on `Int` with arms `0`, `1`, `2` isn't exhaustive (the compiler
+can't enumerate every `Int`) and requires a wildcard arm. Same for
+`String`, `Float`, and any type whose value space isn't enumerated.
 
 ---
 
@@ -199,7 +197,7 @@ Each layer is checked independently for exhaustiveness against the type
 at that position. The arms above cover the three cases of the outer
 `Maybe (List a)`: a `Some` of `Cons`, a `Some` of `Empty`, and `None`. The
 compiler tracks the cross-product as it descends and reports any missing
-combination at the outermost site.
+combination at the outer site.
 
 Nested patterns can also include literals and lists:
 
@@ -219,9 +217,9 @@ outer level, because the inner pattern is not itself exhaustive.
 
 ## 5. Guards
 
-v1 has not yet specified rest patterns and guards. They will be added in a
-later spec revision. Conditional refinement of an arm — "match `Some n`
-*and* `n > 0`" — is currently expressed by matching first and branching
+Rest patterns and guards aren't specified in v1; they'll come in a later
+spec revision. Until then, conditional refinement of an arm — "match
+`Some n` *and* `n > 0`" — is expressed by matching first, then branching
 inside the arm body with a regular `match` on the condition.
 
 ---

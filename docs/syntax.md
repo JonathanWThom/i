@@ -42,8 +42,8 @@ type Point
 
 ### Newlines
 
-A newline terminates an expression unless the line ends with an operator or an
-open paren, in which case the expression continues onto the next line.
+A newline terminates an expression. The exception is when the line ends with
+an operator or an open paren — then the expression continues on the next line.
 
 ```i
 total = a +
@@ -96,8 +96,8 @@ done : Unit
 ## 2. Operators (the four)
 
 These are the entire operator surface for binding and structure. Arithmetic
-and comparison operators are *not* in this list — they desugar to trait
-methods (see § 11).
+and comparison operators aren't in this list; they desugar to trait methods
+(see § 11).
 
 ### `:` — has-type
 
@@ -138,9 +138,8 @@ Std.IO.print
 
 ### Parens — grouping
 
-Round parens group an expression. They are *not* a function-call operator.
-They are required only when nesting forces them or when constructor/update
-kwargs are written.
+Round parens group an expression. They're not a function-call operator. You
+only need them for nesting, or when writing constructor/update kwargs.
 
 ```i
 add 3, (mul 4, 5)
@@ -162,7 +161,7 @@ print! "hi"
 ### Value binding
 
 `name = expr` binds `name` to the value of `expr` in the enclosing scope.
-Bindings are immutable — there is no rebinding and no mutation.
+Bindings are immutable. No rebinding, no mutation.
 
 ```i
 greeting = "hello"
@@ -204,7 +203,7 @@ main =
 ### Definition
 
 `args -> body` is a function value. Arguments are comma-separated lowercase
-identifiers. There is no currying — `a, b -> ...` is one two-argument
+identifiers. There's no currying: `a, b -> ...` is one two-argument
 function, not a chain.
 
 ```i
@@ -260,7 +259,7 @@ type Point
 ### Paren-free call
 
 `f a, b` calls `f` with arguments `a` and `b`. The function is juxtaposed
-with its arguments; commas separate arguments. There is no separate
+with its arguments, and commas separate arguments. There's no separate
 function-application operator.
 
 ```i
@@ -287,9 +286,9 @@ p1.distance p2
 
 ### Multi-argument lambda inside a call
 
-A lambda with more than one parameter must be parenthesized when passed as
-an argument, so the lambda's `,` separators are not read as more arguments.
-Single-argument lambdas need no parens.
+Wrap a multi-arg lambda in parens when passing it as an argument, so the
+lambda's commas don't get read as more arguments. Single-arg lambdas need
+no parens.
 
 ```i
 # nums.fold 0, acc, x -> acc + x      # ambiguous: parser sees four args to fold
@@ -299,8 +298,8 @@ nums.fold 0, (acc, x -> acc + x)      # parens disambiguate
 ### Construction
 
 `Type(field = val, ...)` constructs an instance of `Type` from keyword
-arguments. The parens are *required*; they are not just grouping. Every
-field of the type must be supplied.
+arguments. The parens are required; they aren't just grouping. You have
+to supply every field.
 
 ```i
 p = Point(x = 0, y = 0)
@@ -309,8 +308,8 @@ p = Point(x = 0, y = 0)
 ### Record update
 
 `instance(field = newVal, ...)` produces a copy of `instance` with the listed
-fields replaced. Same surface as construction; the difference is whether the
-left side is a type or a value.
+fields replaced. Same surface as construction. The only difference is whether
+the left side is a type or a value.
 
 ```i
 p2 = p1(x = 5)
@@ -322,9 +321,9 @@ p2 = p1(x = 5)
 
 ### `type` block
 
-`type Name` followed by an indented block of members. The block is closed —
-every field, method, and variant of the type lives here. Inside the block,
-the `Name.` prefix is implicit on every member.
+`type Name` followed by an indented block of members. The block is closed:
+every field, method, and variant of the type lives in here. Inside the
+block, the `Name.` prefix is implicit on every member.
 
 ```i
 type Point
@@ -409,7 +408,7 @@ type Result a, e
 ### Newtype (single-line form)
 
 `type Name = T` declares a one-case wrapper around `T`. Nominally distinct
-from `T` — values are not interchangeable even when the underlying type is.
+from `T`: values aren't interchangeable, even when the underlying type is.
 
 ```i
 type UserId = Int
@@ -528,9 +527,9 @@ m match
 
 ### Exhaustiveness
 
-The compiler rejects any `match` that does not cover every constructor of
-the matched type. There is no fallthrough. A wildcard arm can supply the
-default when needed.
+The compiler rejects any `match` that doesn't cover every constructor of
+the matched type. No fallthrough. A wildcard arm supplies the default when
+you actually want one.
 
 ---
 
@@ -582,8 +581,8 @@ n = parseInt s?
 ### Type rule
 
 `expr?` only type-checks inside a function whose return type is
-`Result _ e` with the same error type `e` as `expr`. The compiler verifies
-every error path; `?` is sugar, not an escape hatch.
+`Result _ e` with the same error type `e` as `expr`. The compiler still
+verifies every error path. `?` is sugar, not an escape hatch.
 
 ```i
 parsePoint = s ->
@@ -596,9 +595,9 @@ parsePoint = s ->
 
 ### Module declaration
 
-`module Name` on the first non-blank line of a file declares the file as a
-module. An indented `expose` clause lists the names visible to importers.
-Everything not exposed is private.
+`module Name` on the first non-blank line of a file declares it as a module.
+An indented `expose` clause lists the names visible to importers. Anything
+not exposed is private.
 
 ```i
 module Geometry
@@ -644,8 +643,8 @@ module Main
 
 ## 11. Operator desugaring
 
-Arithmetic, comparison, and logical operators are not built-in syntax;
-each desugars to a trait method. The trait dispatches on the operand type.
+Arithmetic, comparison, and logical operators aren't built-in syntax. Each
+one desugars to a trait method, and the trait dispatches on the operand type.
 Every primitive type and most stdlib types implement the standard set.
 
 | Operator | Desugars to     | Trait |
@@ -697,5 +696,5 @@ impl Eq Point
 ### Coherence
 
 One implementation per `(trait, type)` pair anywhere in the program
-(Haskell-style global coherence). A type may implement multiple traits;
-there is no inheritance.
+(Haskell-style global coherence). A type may implement multiple traits.
+There's no inheritance.

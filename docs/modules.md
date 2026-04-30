@@ -1,30 +1,30 @@
 # Modules and imports
 
 A focused reference on the module system. For surface forms, see
-[syntax.md § 10](syntax.md); for an introduction, see
-[tour.md § 9](tour.md). This manual is the *why*.
+[syntax.md § 10](syntax.md). For an introduction, see [tour.md § 9](tour.md).
+This manual is the *why*.
 
-The module system in `i` is deliberately small. A file is a module; the
-first line says what it exports; `use` brings other modules in. That is
-the whole mechanism.
+The module system in `i` is deliberately small. A file is a module. The
+first line says what it exports. `use` brings other modules in. That's the
+whole mechanism.
 
 ---
 
 ## 1. One file is one module
 
-Every `.i` file is exactly one module. There is no syntax for declaring
-two modules in one file, or one module across two. The mapping is one-
-to-one in both directions.
+Every `.i` file is exactly one module. No syntax for declaring two modules
+in one file, or one module across two. The mapping is one-to-one in both
+directions.
 
-The module's name is set by the `module` declaration, not by the
-filename. Filename and module name are kept in sync by convention
-(§ 4); they are not enforced to match.
+The module's name is set by the `module` declaration, not by the filename.
+Filename and module name are kept in sync by convention (§ 4); the
+compiler doesn't enforce a match.
 
-A module's *path* — the dotted name after `use` — mirrors the directory
-structure. A file `src/Std/IO.i` declaring `module Std.IO` is imported
-as `use Std.IO`. Compound names like `Std.IO` are flat module names
-that happen to contain dots; there is no submodule hierarchy in the
-type-system sense — `Std.IO` does not "live inside" `Std` as a value.
+A module's *path* (the dotted name after `use`) mirrors the directory
+structure. A file `src/Std/IO.i` declaring `module Std.IO` gets imported
+as `use Std.IO`. Compound names like `Std.IO` are flat module names that
+happen to contain dots. There's no submodule hierarchy in the type-system
+sense; `Std.IO` doesn't "live inside" `Std` as a value.
 
 ---
 
@@ -38,14 +38,14 @@ module Geometry
 ```
 
 `module Name` names the module. The indented `expose` clause lists the
-names that are visible to importers — types, functions, constants, and
-traits. Anything bound or declared elsewhere in the file but not named in
-`expose` is private and inaccessible outside this file.
+names visible to importers: types, functions, constants, traits.
+Anything bound or declared elsewhere in the file but not named in `expose`
+is private and inaccessible outside this file.
 
 `expose` accepts type names, value names, and trait names. Exposing a
-type exposes its variants and constructors with it; v1 has no hidden-
-constructor mechanism. Multiple `expose` lines concatenate; order does
-not matter.
+type exposes its variants and constructors with it; v1 has no
+hidden-constructor mechanism. Multiple `expose` lines concatenate, and
+order doesn't matter.
 
 ---
 
@@ -77,17 +77,17 @@ use Std.Float as F
 x = F.parse "3.14"
 ```
 
-Cherry-pick and alias do not combine in v1 — `use Path as A (x, y)` is
-not valid. Write two `use` lines if you need both. `use` lines go
-between the `module` declaration and the rest of the file; convention
-groups them contiguously.
+Cherry-pick and alias don't combine in v1; `use Path as A (x, y)` isn't
+valid. Write two `use` lines if you need both. `use` lines go between the
+`module` declaration and the rest of the file; convention groups them
+contiguously.
 
 ---
 
 ## 4. Project layout
 
-`i` does not enforce a project layout. The convention used by the
-examples and the standard library is:
+`i` doesn't enforce a project layout. The convention used by the examples
+and the standard library is:
 
 ```
 my-project/
@@ -106,9 +106,9 @@ dropped: `src/Geometry.i` declares `module Geometry`, and
 `src/Std/IO.i` declares `module Std.IO`.
 
 This is convention, not enforced. The compiler resolves `use Path` by
-locating a file whose `module` declaration names that path; the
-directory structure is how it finds the file, but the declaration is
-the source of truth.
+finding a file whose `module` declaration names that path. The directory
+structure is how it locates the file, but the declaration is the source
+of truth.
 
 A worked two-file program lives in `examples/08-modules-lib.i` and
 `examples/08-modules-app.i`. `Geometry` exposes `Point` and `distance`;
@@ -146,9 +146,8 @@ main =
 ## 5. Visibility rules
 
 The visibility rule is a single sentence: **only names listed in
-`expose` are accessible from other modules.** Everything else in the
-file — helper functions, local types, intermediate constants — is
-private.
+`expose` are accessible from other modules.** Everything else in the file
+— helper functions, local types, intermediate constants — is private.
 
 ```i
 module Geometry
@@ -165,28 +164,28 @@ from another module is a compile-time error, and a cherry-pick `use
 Geometry (square)` fails for the same reason: the name is not exported.
 
 Visibility is checked at the module boundary, not within the file.
-There is no protected, internal, or friend visibility — a name is
-either exposed or private. The two-level model is intentional:
-refining further would multiply the rules a reader must hold in their
-head, and the same discipline can be achieved by splitting modules.
+There's no protected, internal, or friend visibility. A name is either
+exposed or private. The two-level model is on purpose: refining further
+would multiply the rules a reader has to hold in their head, and the
+same discipline can be had by splitting modules.
 
-A function that returns a private type cannot itself be exposed — the
-type would leak through the signature. The compiler rejects this at
-the exposure site.
+A function that returns a private type can't itself be exposed; the type
+would leak through the signature. The compiler rejects this at the
+exposure site.
 
 ---
 
 ## 6. Circular imports
 
 **Modules form a directed acyclic graph in v1.** If module `A` uses
-module `B`, then `B` cannot use `A` directly or transitively. A cycle is
-a compile-time error, naming the cycle's members.
+module `B`, then `B` can't use `A` directly or transitively. A cycle is
+a compile-time error, and the message names the cycle's members.
 
-The acyclic restriction is a v1 commitment. It keeps the resolver
-simple and makes type-checking a strict topological pass. Most programs
-structure cleanly as a DAG; cases where two modules genuinely need each
-other usually indicate that they should be one module, or that a third
-module should hold the shared types.
+The acyclic restriction is a v1 commitment. It keeps the resolver simple
+and makes type-checking a strict topological pass. Most programs structure
+cleanly as a DAG. Cases where two modules genuinely need each other
+usually mean they should be one module, or that a third module should
+hold the shared types.
 
 If you find yourself wanting a cycle:
 

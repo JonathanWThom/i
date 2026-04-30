@@ -1,7 +1,7 @@
 # Standard library reference
 
 Lookup reference for v1's standard library. Every type and function is
-listed; entries give the signature, a one-line description, and a small
+listed. Each entry gives the signature, a one-line description, and a small
 example only when the shape isn't obvious from the signature.
 
 For the language surface, see [syntax.md](syntax.md). For the type and
@@ -9,16 +9,15 @@ effect rules these signatures live inside, see [types.md](types.md) and
 [effects.md](effects.md). For a guided walk through the most-used pieces,
 see [tour.md](tour.md).
 
-The v1 stdlib is intentionally small. The numeric tower is `Int` (i64)
-and `Float` (f64) only. There is no `Std.Parse` module — parsing
-functions live on the type they parse into (`Std.Int.parse`,
-`Std.Float.parse`).
+The v1 stdlib is deliberately small. The numeric tower is `Int` (i64) and
+`Float` (f64) only. There's no `Std.Parse` module; parsing functions live
+on the type they parse into (`Std.Int.parse`, `Std.Float.parse`).
 
 ---
 
 ## Prelude traits
 
-These traits are auto-imported into every module. You do not write
+These traits are auto-imported into every module. You don't write
 `use Std.Eq` to use `==`. Operators desugar to trait methods (see
 [syntax.md § 11](syntax.md)); to make a user-defined type usable with
 the operator, write the matching `impl`.
@@ -54,8 +53,8 @@ div : a, a -> a
 ```
 
 Arithmetic. Operators `+`, `-`, `*`, `/` desugar to these. `Int` and
-`Float` ship implementations; mixing the two is a type error (no
-implicit conversion — see [types.md § 1](types.md)).
+`Float` ship implementations. Mixing the two is a type error: no implicit
+conversion (see [types.md § 1](types.md)).
 
 ### `Neg a`
 
@@ -82,9 +81,9 @@ a user-defined numeric type.
 show : a -> String
 ```
 
-Convert a value to its display string. The conversion that `print!` and
-the string-concatenation idiom rely on; every primitive type and most
-stdlib types have a derived `Show` impl.
+Convert a value to its display string. This is what `print!` and the
+string-concatenation idiom rely on. Every primitive type and most stdlib
+types have a derived `Show` impl.
 
 ```i
 print! "n = " ++ show n
@@ -95,7 +94,7 @@ print! "n = " ++ show n
 ## `Std.Bool`
 
 The two-valued boolean type and its functions. `and`, `or`, `not`, `xor`
-are ordinary functions, not operators — call them paren-free like any
+are ordinary functions, not operators. Call them paren-free like any
 other function.
 
 ### `Bool`
@@ -157,8 +156,8 @@ n = I.parse "42"        # Ok 42
 
 ### `toFloat : Int -> Float`
 
-Widen to `Float`. There is no implicit `Int`-to-`Float` coercion; this
-is the explicit conversion.
+Widen to `Float`. There's no implicit `Int`-to-`Float` coercion; this is
+the explicit conversion.
 
 ### `toString : Int -> String`
 
@@ -314,9 +313,9 @@ Strip leading and trailing whitespace.
 
 ## `Std.List`
 
-The singly-linked list type. The pattern across the stdlib's
-collection-shaped operations: never crash, always return `Maybe` or
-`Result` for partial functions.
+The singly-linked list type. The rule across the stdlib's collection
+operations: never crash, always return `Maybe` or `Result` for partial
+functions.
 
 ### `List a`
 
@@ -364,7 +363,7 @@ Reverse the list. Linear time.
 
 ### `head : List a -> Maybe a`
 
-First element, or `None` if the list is empty. Total — never crashes.
+First element, or `None` if the list is empty. Total: never crashes.
 
 ### `tail : List a -> Maybe (List a)`
 
@@ -383,7 +382,7 @@ larger than the length; returns `Empty` if `n <= 0`.
 ### `zip : List a, List b -> List (Pair a b)`
 
 Pair elements positionally. The result has the length of the shorter
-input. `Pair` is `Std.Pair` (see below) — used here because v1 has no
+input. `Pair` is `Std.Pair` (see below); used here because v1 has no
 tuples.
 
 ---
@@ -476,7 +475,7 @@ Apply a function inside `Ok`; pass `Error` through unchanged.
 
 ### `mapError : Result a e, (e -> f) -> Result a f`
 
-Transform the error. The standard tool for adapting one error type to
+Transform the error. The usual tool for adapting one error type to
 another at a module boundary.
 
 ### `andThen : Result a e, (a -> Result b e) -> Result b e`
@@ -488,8 +487,8 @@ The `?` operator is sugar over an `andThen`-style early exit.
 
 ## `Std.IO`
 
-The IO effect's stdlib surface. Every operation here carries `! IO` —
-calling any of them gives the calling function `! IO` in its inferred
+The IO effect's stdlib surface. Every operation here carries `! IO`.
+Calling any of them gives the calling function `! IO` in its inferred
 type. See [effects.md § 4](effects.md).
 
 ### `print : String ! IO -> Unit`
@@ -511,10 +510,10 @@ procedure — call it `readLine!`.
 
 ### `readFile : String ! IO -> String`
 
-Read the entire file at the given path as a string. (File-not-found and
-similar errors surface through the IO error channel — provisionally
-typed `IoError` — whose variants the v1 spec has not pinned. See
-[limitations.md](limitations.md).)
+Read the entire file at the given path as a string. File-not-found and
+similar errors surface through the IO error channel, provisionally typed
+`IoError`. The variants aren't pinned in v1; see
+[limitations.md](limitations.md).
 
 ### `writeFile : String, String ! IO -> Unit`
 

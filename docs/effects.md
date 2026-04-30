@@ -3,29 +3,29 @@
 A deep dive on `!`. For surface forms, see [syntax.md § 8](syntax.md); for a
 guided introduction, see [tour.md § 7](tour.md). This manual is the *why*.
 
-Most code in `i` is pure, and most readers will spend most of their time not
-thinking about effects at all. The system is designed to stay out of your
-way: you write ordinary functions, the inferencer figures out which ones
-touch the outside world, and the `!` you put at call sites is the only thing
-you ever have to type. The rest of this doc explains how that ends up being
-enough.
+Most code in `i` is pure, and most readers will spend most of their time
+not thinking about effects at all. The system is built to stay out of your
+way. You write ordinary functions, the inferencer figures out which ones
+touch the outside world, and the `!` you put at call sites is the only
+thing you ever have to type. The rest of this doc explains how that turns
+out to be enough.
 
 ---
 
 ## 1. What "pure" means here
 
-A function is **pure** when its inferred type contains no `!` row. That is a
-strong claim, not a stylistic one. A pure function:
+A function is **pure** when its inferred type contains no `!` row. That's
+a strong claim, not a stylistic one. A pure function:
 
-- performs no IO — it does not print, read input, touch the filesystem, or
-  the network;
-- mutates no state — there are no in-place updates and no rebinding;
-- has no observable side effects — no logging, no clocks, no randomness.
+- does no IO. It doesn't print, read input, touch the filesystem, or hit
+  the network.
+- mutates no state. No in-place updates, no rebinding.
+- has no observable side effects. No logging, no clocks, no randomness.
 
-Given the same inputs, a pure function produces the same output, every time,
+Given the same inputs, a pure function produces the same output every time,
 with no externally visible trace. The compiler enforces this by tracking
-*every* effectful call through the call graph (§ 6) and refusing to assign a
-pure type to any function that participates in one.
+*every* effectful call through the call graph (§ 6) and refusing to assign
+a pure type to any function that participates in one.
 
 ```i
 double : Int -> Int          # pure — no `!` in the type
@@ -35,17 +35,17 @@ quadruple : Int -> Int       # pure — calls double, which is pure
 quadruple = n -> double (double n)
 ```
 
-There is no annotation that opts a function into purity. Purity is the
-*default* — the absence of `!` is the absence of effects, not a promise to be
-verified later. See `examples/05-effects.i` for a side-by-side of pure and
-effectful definitions.
+There's no annotation that opts a function into purity. Purity is the
+*default*. The absence of `!` is the absence of effects, not a promise to
+be verified later. See `examples/05-effects.i` for a side-by-side of pure
+and effectful definitions.
 
 ---
 
 ## 2. The `!` marker
 
-`!` appears at exactly one place in user code: a call site that performs an
-effect. It is a postfix on the function name, written before the arguments.
+`!` appears at exactly one place in user code: a call site that performs
+an effect. It's a postfix on the function name, written before the arguments.
 
 ```i
 print! "hello"
@@ -53,18 +53,18 @@ name = readLine!
 contents = readFile! "input.txt"
 ```
 
-For a zero-argument procedure like `readLine`, the `!` is also how the
-procedure is invoked — without it, `readLine` is a reference to the function
-value, not a call. For a procedure that takes arguments, `!` sits between
-the function name and the arguments: `print! "hello"`.
+For a zero-argument procedure like `readLine`, the `!` is also how you
+invoke it. Without it, `readLine` is a reference to the function value,
+not a call. For a procedure with arguments, `!` sits between the function
+name and the arguments: `print! "hello"`.
 
 The `!` is *not* part of the function's name. `print` is the name; `print!`
-is "calling `print` for its effect." The compiler uses the marker as
-evidence that you knew this call was effectful and propagates the effect
+is "calling `print` for its effect." The compiler takes the marker as
+evidence that you knew this call was effectful, and propagates the effect
 into the caller's type.
 
 You almost never write `!` anywhere else. Type signatures pick effects up
-from the body; you only write `! Eff` in a type when you are documenting
+from the body. You only write `! Eff` in a type when you're documenting
 an interface by hand (§ 3).
 
 ---
@@ -80,18 +80,18 @@ readLine : ! IO -> String
 writeFile : String, String ! IO -> Unit
 ```
 
-The reading is left to right: "`String`, with effect `IO`, to `Unit`." Or
-for the zero-argument form: "with effect `IO`, to `String`." The row is
-*part of the function's type* — two functions that differ only in their
-effect row are different types.
+Read it left to right: "`String`, with effect `IO`, to `Unit`." Or for the
+zero-argument form: "with effect `IO`, to `String`." The row is *part of
+the function's type*: two functions that differ only in their effect row
+are different types.
 
-A function with multiple effects lists them in the row separated by
-commas: `! IO, State`. v1 only has two effect labels, so this is mostly
-theoretical — but the slot is there.
+A function with multiple effects separates them with commas in the row:
+`! IO, State`. v1 only has two effect labels, so this is mostly
+theoretical, but the slot is there.
 
 The row gives you one place to look to understand a function's boundary
 with the outside world. `add : Int, Int -> Int` has no `!`, so it has no
-boundary; `print : String ! IO -> Unit` has `! IO`, so it does.
+boundary. `print : String ! IO -> Unit` has `! IO`, so it does.
 
 ---
 
@@ -99,46 +99,45 @@ boundary; `print : String ! IO -> Unit` has `! IO`, so it does.
 
 Two labels, total:
 
-- **`IO`** — anything that crosses the program/world boundary. The standard
-  library's `Std.IO` operations all carry `! IO`: `print`, `println`,
-  `readLine`, `readFile`, `writeFile`. The `readFile` / `writeFile` error
-  surface is provisionally `IoError`; its variants are not yet pinned (see
+- **`IO`** — anything that crosses the program/world boundary. The
+  `Std.IO` operations all carry `! IO`: `print`, `println`, `readLine`,
+  `readFile`, `writeFile`. The `readFile` / `writeFile` error surface is
+  provisionally `IoError`; its variants aren't pinned yet (see
   [stdlib.md § `Std.IO`](stdlib.md) and [limitations.md](limitations.md)).
-  Future filesystem or network primitives, when they arrive, will carry
-  `! IO` as well.
+  Future filesystem or network primitives will carry `! IO` too.
 - **`State`** — mutable cell operations, exposed through `Std.Ref`.
   `Ref.make`, `Ref.get`, and `Ref.set` all carry `! State`. A function that
-  reads or writes a `Ref` inherits `! State` in its inferred row.
+  reads or writes a `Ref` picks up `! State` in its inferred row.
 
-That is the entire effect alphabet for v1. There are no user-defined
-effects in v1 — adding effect labels (an exception effect, a logging
-effect, an algebraic-effect handler system) is deferred to a later spec.
-See [limitations.md](limitations.md).
+That's the entire effect alphabet for v1. There are no user-defined effects
+in v1; adding effect labels (an exception effect, a logging effect, an
+algebraic-effect handler system) is deferred to a later spec. See
+[limitations.md](limitations.md).
 
 `IO` and `State` are tracked independently. A function that prints to the
-console and reads a `Ref` has type `... ! IO, State -> ...`. The order
-within a row is not significant.
+console and reads a `Ref` has type `... ! IO, State -> ...`. Order within
+a row doesn't matter.
 
 ---
 
 ## 5. Why mutation isn't built-in
 
 `i` has no `mut`, no rebinding, no in-place updates. Every "modification"
-produces a new value:
+makes a new value:
 
 ```i
 p1 = Point(x = 0, y = 0)
 p2 = p1(x = 5)              # new Point, p1 unchanged
 ```
 
-This is consistent with the rest of the language — values are facts; new
-facts are new values — and it is what makes the purity guarantee in § 1
-worth anything. If two function calls could quietly mutate a shared
-record, "no observable effect" would mean nothing.
+This fits the rest of the language: values are facts, and new facts are
+new values. It's also what makes the purity guarantee in § 1 worth anything.
+If two function calls could quietly mutate a shared record, "no observable
+effect" would mean nothing.
 
-For the rare case that genuinely needs mutable state — an iteration counter
+For the rare case that actually needs mutable state — an iteration counter
 threaded through a recursion, a memoization table, a buffer being built up
-— the standard library exposes `Std.Ref`. `Ref a` is a mutable cell:
+— the stdlib exposes `Std.Ref`. `Ref a` is a mutable cell:
 
 ```i
 Std.Ref.make : a ! State -> Ref a
@@ -147,21 +146,21 @@ Std.Ref.set  : Ref a, a ! State -> Unit
 ```
 
 `Ref` operations all carry `! State`. The cost of using one is that the
-function becomes effectful — its type now mentions `! State`, and any
-caller that wants to stay pure has to encapsulate the use locally.
-Mutation is available; it is just *visible* in the type, the same way IO
-is. There is no way to do mutation invisibly.
+function becomes effectful: its type now mentions `! State`, and any caller
+that wants to stay pure has to encapsulate the use locally. Mutation is
+available; it's just *visible* in the type, the same way IO is. You can't
+do mutation invisibly.
 
-The pattern this supports is "small effectful core, large pure surround":
-the effectful part of a program is concentrated in `main` and a few
-helpers, while most of the logic stays pure and trivially testable.
+The pattern this supports is "small effectful core, large pure surround."
+The effectful part of a program lives in `main` and a few helpers, while
+most of the logic stays pure and trivially testable.
 
 ---
 
 ## 6. What you don't have to write
 
-Effect rows are inferred. You do not annotate your own functions with
-`! IO` when they call effectful things; the compiler propagates the row
+Effect rows are inferred. You don't annotate your own functions with
+`! IO` when they call effectful things — the compiler propagates the row
 upward through the call graph automatically. The rule is the natural one:
 a function's effect row is the union of the rows of every effectful call
 in its body.
@@ -178,24 +177,24 @@ main =
     print! "done"
 ```
 
-The `!` at each call site is the only thing you wrote. The signatures shown
-above are what inference produces; you would normally not write them out.
-Module-exposed names are an exception — pinning the inferred row in the
-signature documents the boundary and prevents accidental widening, the same
-way you might pin a value's type at a module boundary (see
+The `!` at each call site is the only thing you wrote. The signatures
+above are what inference produces; you'd normally not write them out.
+Module-exposed names are the exception: pinning the inferred row in the
+signature documents the boundary and prevents accidental widening, the
+same way you might pin a value's type at a module boundary (see
 [types.md § 10](types.md)).
 
-You also do not declare an effect alphabet, register handlers, or import
-an effect library. The two labels live in the language; the standard
-library carries them on the operations that produce them; your code picks
-them up by calling those operations.
+You also don't declare an effect alphabet, register handlers, or import an
+effect library. The two labels live in the language. The stdlib carries
+them on the operations that produce them. Your code picks them up by
+calling those operations.
 
 ---
 
 ## 7. What this catches
 
-The everyday payoff is straightforward: you cannot accidentally do IO from
-a function you thought was pure. Suppose you add a `print!` to a function
+The everyday payoff is simple: you can't accidentally do IO from a
+function you thought was pure. Suppose you drop a `print!` into a function
 for debugging:
 
 ```i
@@ -205,23 +204,23 @@ double = n ->
 ```
 
 `double`'s inferred type is now `Int ! IO -> Int`, not `Int -> Int`. Every
-caller of `double` inherits `! IO`. Any function that *was* pure but now
-transitively calls `double` has `! IO` in its inferred type as well — and
-the moment one of those is used somewhere a pure value is required (a
+caller of `double` picks up `! IO`. Any function that *was* pure but now
+transitively calls `double` has `! IO` in its inferred type too. The
+moment one of those gets used somewhere a pure value is required — a
 trait method that returns a pure type, an exposed signature you wrote by
-hand, a context that doesn't permit IO), the compiler reports the mismatch
+hand, a context that doesn't permit IO — the compiler reports the mismatch
 and points at the offending call.
 
-You don't need to remember to clean up the debug print. The type system
-will not let you forget — leaving `print!` in production code is not a
-discipline question, it is a compile error in every place that expected a
+You don't have to remember to clean up the debug print. The type system
+won't let you forget. Leaving `print!` in production code isn't a
+discipline question, it's a compile error in every place that expected a
 pure function.
 
-The same mechanism catches less obvious cases: a helper that quietly
-mutates a `Ref` carries `! State` and cannot be called from a function
-whose signature pins it as pure; a refactor that pushes IO into a deeper
-utility shows up as `! IO` everywhere it is reached. The effect row makes
-the call graph's relationship to the outside world legible by construction.
+The same mechanism catches less obvious cases. A helper that quietly
+mutates a `Ref` carries `! State` and can't be called from a function
+whose signature pins it as pure. A refactor that pushes IO into a deeper
+utility shows up as `! IO` everywhere it's reached. The effect row makes
+the call graph's relationship with the outside world readable.
 
 ---
 

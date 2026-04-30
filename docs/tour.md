@@ -1,13 +1,12 @@
 # A tour of `i`
 
-This is a tour, not a reference. It walks through `i` end-to-end so you can read
-small programs and start writing your own. For the full rules of any topic
-shown here, follow the link at the end of each section to the matching manual.
+This is a tour, not a reference. It walks through the language so you can
+read small programs and start writing your own. For the full rules on any
+topic, follow the link at the end of each section.
 
-The reader this tour assumes: someone who has used another statically typed
-language. You don't need to know Haskell, OCaml, or Roc — but if a sentence
-mentions one and you've never seen it, that's fine, the example just below
-will speak for itself.
+I'm assuming you've used another statically typed language. You don't need
+Haskell, OCaml, or Roc background. If a sentence mentions one of them and
+you've never seen it, the example right below should be enough on its own.
 
 ---
 
@@ -25,21 +24,21 @@ main =
 ```
 
 Three things to notice. First, every file declares its module on the first
-line. The indented `expose main` says: this module's public surface is one
-name, `main`. Second, a program runs by evaluating the `main` value of the
-`Main` module — that's the entry point, no separate `int argc` ceremony.
-Third, `print!`. The `!` is not punctuation; it's the effect marker. It says
-"this call performs an effect" — here, IO.
+line, and the indented `expose main` says the public surface of this module
+is just one name. Second, a program runs by evaluating `main` in the `Main`
+module. That's the entry point — no `int argc` ceremony. Third, `print!`.
+The `!` isn't punctuation; it's the effect marker. It means "this call does
+something effectful," in this case IO.
 
-Next: how `=` and `:` introduce values and types. For the lookup-style
-reference of every form shown here, see [syntax.md](syntax.md).
+Next: how `=` and `:` introduce values and types. For lookup-style coverage
+of every form here, see [syntax.md](syntax.md).
 
 ---
 
 ## 2. Values and bindings
 
-In `i`, `=` binds a name to a value. There is no `let`, no `var`, no `const`.
-There is no rebinding either — every binding is immutable for its scope.
+`=` binds a name to a value. There is no `let`, no `var`, no `const`. You
+also can't rebind: every binding is immutable for its scope.
 
 ```i
 greeting = "hello"
@@ -60,13 +59,13 @@ Or fuse them on one line:
 greeting : String = "hello"
 ```
 
-You almost never need the annotation. Inference handles local bindings. The
-common reason to write `:` is to document a function's interface (next
-section) or to disambiguate when inference can't decide on its own.
+You rarely need the annotation. Inference handles local bindings. You'll
+mostly write `:` to document a function's interface (next section), or when
+inference can't decide on its own.
 
-There is no mutation. To "change" a value, you produce a new one. (For the
-rare case you genuinely need mutable state, the standard library has `Ref`;
-its operations are tracked as a `State` effect.)
+There's no mutation. To "change" a value, you make a new one. The rare case
+where you genuinely need mutable state has `Ref` in the standard library;
+those operations are tracked as a `State` effect.
 
 For the full operator and binding rules, see [syntax.md](syntax.md).
 
@@ -74,8 +73,8 @@ For the full operator and binding rules, see [syntax.md](syntax.md).
 
 ## 3. Functions
 
-A function is `args -> body`. Multiple arguments are comma-separated. There is
-no currying — `a, b -> ...` is one two-argument function, not a chain.
+A function is `args -> body`. Multiple arguments are comma-separated. There's
+no currying: `a, b -> ...` is one two-argument function, not a chain.
 
 ```i
 double = n -> n * 2
@@ -112,8 +111,8 @@ double : Int -> Int
 add    : Int, Int -> Int
 ```
 
-The comma-separated arg types mirror the comma-separated lambda form — `add`
-takes two `Int`s, not an `Int` returning an `Int -> Int`.
+The comma-separated arg types mirror the comma-separated lambda form. `add`
+takes two `Int`s, not an `Int` that returns `Int -> Int`.
 
 Next: bundling values into records. For the formal rules on functions and
 type signatures, see [types.md § 5](types.md) and [syntax.md § 4](syntax.md).
@@ -123,8 +122,8 @@ type signatures, see [types.md § 5](types.md) and [syntax.md § 4](syntax.md).
 ## 4. Records
 
 A record is a `type` block with named fields. Inside the block, `:` introduces
-a field and `=` introduces a method or constant. Methods receive an implicit
-`self` — it is not in the parameter list of the method, it's added because the
+a field and `=` introduces a method or constant. Methods get an implicit
+`self`. You don't put it in the parameter list; it's there because the
 binding lives inside a `type` block.
 
 ```i
@@ -135,12 +134,12 @@ type Point
         ((self.x - other.x)^2 + (self.y - other.y)^2)^0.5
 ```
 
-Inside the `type` block, `distance` is shorthand for `Point.distance` — the
-type prefix is implicit on every member. (`^` is the exponentiation operator.)
+Inside the `type` block, `distance` is short for `Point.distance`; the type
+prefix is implicit on every member. (`^` is exponentiation.)
 
-To construct, apply the type to keyword arguments. Construction parens are
-**required** — without them, `Type x = value, ...` is syntactically ambiguous
-with starting a new value binding:
+To construct, apply the type to keyword arguments. The parens are required.
+Without them, `Type x = value, ...` is syntactically ambiguous with starting
+a new value binding:
 
 ```i
 p1 = Point(x = 0, y = 0)
@@ -159,9 +158,9 @@ To make a copy with overrides, apply an instance to kwargs the same way:
 p3 = p1(x = 5)      # copy of p1 with x = 5
 ```
 
-Same surface, two related operations: type-applied-to-kwargs constructs;
-instance-applied-to-kwargs updates. There is no inheritance — types compose
-through traits, not subclassing.
+Same surface, two related operations. Type with kwargs constructs; instance
+with kwargs updates. There's no inheritance; types compose through traits,
+not subclassing.
 
 For the deep dive, see [types.md](types.md).
 
@@ -195,15 +194,14 @@ main =
     print! "area: " ++ show (area s)
 ```
 
-Two new things. The `Shape` type has two cases, `Circle` and `Rect`, each with
-its own fields. And `shape match` is the pattern-match form: write the value,
-then `match`, then an indented block of `pattern -> body` arms. (`show` is a
-stdlib function that converts displayable values to `String`.)
+Two new things. `Shape` has two cases, `Circle` and `Rect`, each with its
+own fields. And `shape match` is the pattern-match form: write the value,
+then `match`, then an indented block of `pattern -> body` arms. (`show`
+is a stdlib function for converting displayable values to `String`.)
 
 The compiler checks every `match` for exhaustiveness. Forget to handle
-`Rect`, and the program won't build — the error tells you which case you
-missed. There is no fallthrough and no default needed when you've covered the
-cases by name.
+`Rect` and the program won't build; the error names the case you missed.
+No fallthrough, and no default needed when you've covered the cases by name.
 
 For all the pattern kinds (literals, lists, nested), see [patterns.md](patterns.md).
 
@@ -211,8 +209,8 @@ For all the pattern kinds (literals, lists, nested), see [patterns.md](patterns.
 
 ## 6. Maybe and Result
 
-`i` has no null and no exceptions. Absence of a value is `Maybe a`; failure is
-`Result a e`. Both come from the standard library; both work with `match`.
+`i` has no null and no exceptions. Absence is `Maybe a`. Failure is
+`Result a e`. Both live in the standard library and both work with `match`.
 
 ```i
 type Maybe a
@@ -239,11 +237,10 @@ parseInt "42" match
     Error err -> ...
 ```
 
-When you have several fallible calls in a row, the `?` operator collapses the
-boilerplate. `expr?` means: if `expr` is `Error e`, return `Error e` from
-the enclosing function; otherwise unwrap the `Ok` value. It only type-checks
-inside a function whose return type is a `Result _ e` with the same error
-type.
+When you have several fallible calls in a row, `?` collapses the boilerplate.
+`expr?` reads: if `expr` is `Error e`, return `Error e` from the enclosing
+function; otherwise unwrap the `Ok` value. It only type-checks inside a
+function whose return type is `Result _ e` with the same error type.
 
 ```i
 parsePoint = s ->
@@ -253,8 +250,9 @@ parsePoint = s ->
         _         -> Error WrongShape
 ```
 
-If either `parseFloat` returns `Error`, `parsePoint` returns that same error
-immediately; otherwise the unwrapped values are used to construct the `Point`.
+If either `parseFloat` returns `Error`, `parsePoint` returns that error
+immediately. Otherwise the unwrapped values feed into the `Point`
+constructor.
 
 The compiler still checks every error path. `?` is sugar, not an escape hatch.
 
@@ -265,10 +263,10 @@ For the full safety story, see [types.md](types.md) and the stdlib
 
 ## 7. Effects
 
-A function whose type does not mention `!` does no IO, no mutation, and
-nothing else observable. That's enforced — not a guideline.
+A function whose type doesn't mention `!` does no IO, no mutation, no other
+observable side effect. The compiler enforces this; it's not a guideline.
 
-When you call something effectful, you mark the call site with `!`:
+Mark effectful call sites with `!`:
 
 ```i
 main =
@@ -280,7 +278,7 @@ main =
 See `examples/02-greet.i` for the runnable version.
 
 You almost never write `!` in a type signature. The compiler infers the
-effect row and propagates it:
+effect row and propagates it up the call graph:
 
 ```i
 print    : String ! IO -> Unit       # in stdlib
@@ -289,9 +287,9 @@ greet    : String ! IO -> Unit       # inferred from body
 add      : Int, Int -> Int           # pure
 ```
 
-The visible thing is `!` at the call site. If you accidentally call `print!`
-from a function you thought was pure, that function's inferred type now
-carries `! IO`, and you'll see it as soon as you try to use that function
+The only visible thing is `!` at the call site. If you accidentally call
+`print!` from a function you thought was pure, the inferred type now carries
+`! IO`, and you'll find out the moment you try to use that function
 somewhere a pure value is expected.
 
 For the deep dive, see [effects.md](effects.md).
@@ -315,8 +313,8 @@ main =
     print! "doubled: " ++ show doubled
 ```
 
-`nums.map x -> x * 2` is two things glued: `nums.map` is a method call (with
-implicit `self = nums`), and `x -> x * 2` is the lambda passed in.
+`nums.map x -> x * 2` is two things glued together. `nums.map` is a method
+call with implicit `self = nums`, and `x -> x * 2` is the lambda passed in.
 
 A few more, for flavor:
 
@@ -325,22 +323,22 @@ positives = nums.filter x -> x > 0
 total     = nums.fold 0, (acc, x -> acc + x)
 ```
 
-`fold` takes the initial accumulator and a two-arg function combining
-accumulator with the next element. The parens around the lambda are the
-same nesting trick from section 3 — they keep the lambda's commas from
-being read as more arguments to `fold`. There is no `for` loop in `i`; when
-you want to walk a list, you reach for `map`, `filter`, or `fold`.
+`fold` takes the initial accumulator and a two-arg function that combines
+the accumulator with the next element. The parens around the lambda are the
+same nesting trick from section 3: they stop the lambda's commas from being
+read as more arguments to `fold`. There's no `for` loop in `i`. To walk a
+list, reach for `map`, `filter`, or `fold`.
 
-The standard library never crashes on an empty list — `head` returns
-`Maybe a`, not `a`. See [stdlib.md § `Std.List`](stdlib.md) for the full
-list of operations.
+The standard library never crashes on an empty list. `head` returns `Maybe a`,
+not `a`. For the full set of operations, see
+[stdlib.md § `Std.List`](stdlib.md).
 
 ---
 
 ## 9. Modules
 
 One file is one module. The first non-blank line declares the module name and
-what it exposes; everything else in the file is private.
+what it exposes. Everything else in the file is private.
 
 ```i
 module Geometry
@@ -365,7 +363,7 @@ use Std.IO (print, readLine)            # cherry-pick names
 use Geometry as Geo                     # rename for local use
 ```
 
-The `Main` module with its `main` value is the program entry point — that's
+The `Main` module with its `main` value is the program entry point. That's
 why every example so far has started with `module Main` and `expose main`.
 
 For the full module rules, see [modules.md](modules.md).
@@ -374,7 +372,7 @@ For the full module rules, see [modules.md](modules.md).
 
 ## 10. Where to go next
 
-You have now seen every concept in the language. Pick the depth you want:
+You've now seen every concept in the language. Pick the depth you want:
 
 - [Syntax reference](syntax.md) — every form, every operator, look-up style
 - [Type system](types.md) — records, sums, generics, traits, totality
@@ -385,6 +383,5 @@ You have now seen every concept in the language. Pick the depth you want:
 - [Building and running](building.md) — installing the toolchain, the CLI
 - [Limitations](limitations.md) — what v1 explicitly doesn't do
 
-If you only have time to read one more, read [syntax.md](syntax.md) — it's
-the densest map of the surface. Everything else is depth on a particular
-axis.
+If you only have time for one more, read [syntax.md](syntax.md). It's the
+densest map of the surface. Everything else goes deep on a single axis.

@@ -1,14 +1,14 @@
 # Building and running
 
-> **Status:** This doc describes commands that do not yet exist. The Rust
-> implementation arrives in the next plan. Everything below is the contract
-> the implementation will be measured against — what `i` programs will look
-> like to run, what the directory layout will be, and what an error message
-> from the type-checker should read like.
+> **Status:** This doc describes commands that don't exist yet. The Rust
+> implementation lands in the next plan. Everything below is the contract
+> the implementation gets measured against: what `i` programs will look
+> like to run, what the directory layout will be, and what an error
+> message from the type-checker should read like.
 
 The CLI for `i` is a single binary, also called `i`, with a small set of
-subcommands. `i run main.i` is the only command that matters until you have
-more than one file.
+subcommands. Until you have more than one file, `i run main.i` is the
+only command that matters.
 
 ---
 
@@ -21,19 +21,19 @@ cargo install i-lang
 ```
 
 This builds the `i` binary from source and drops it on your `$PATH`. The
-stdlib ships inside the binary; there is no separate package and no version
-manager. Verify with `i --version`.
+stdlib ships inside the binary. There's no separate package and no
+version manager. Verify with `i --version`.
 
-Until the implementation lands, none of the commands below run.
+Until the implementation lands, none of the commands below actually run.
 
 ---
 
 ## 2. Project layout
 
-`i` programs come in two sizes. A *single-file* program is one `.i` file you
-run directly — no project, no manifest, no directories. This is what the
-`examples/` directory contains, and it is the right shape for scripts and
-exercises:
+`i` programs come in two sizes. A *single-file* program is one `.i` file
+you run directly — no project, no manifest, no directories. This is what
+the `examples/` directory contains, and it's the right shape for scripts
+and exercises:
 
 ```
 hello.i
@@ -52,13 +52,13 @@ my-project/
             IO.i         # module Std.IO
 ```
 
-There is no `i.toml` or equivalent in v1. The project is just the `src/`
+There's no `i.toml` or equivalent in v1. The project is just the `src/`
 directory; the compiler walks it to resolve `use` declarations. If you run
-`i run src/Main.i`, the project root is implicitly the parent directory of
-`src/`.
+`i run src/Main.i`, the project root is implicitly the parent directory
+of `src/`.
 
 A future version may add a manifest for dependencies and metadata. v1 has
-no third-party packages, so there is nothing to manifest.
+no third-party packages, so there's nothing to manifest.
 
 ---
 
@@ -96,23 +96,23 @@ errors as described in § 5.
 
 ### `i fmt <file>` *(planned for later)*
 
-`i fmt` will format an `.i` file in place to the canonical layout. It is
-**not included in v1** — pinning the formatter before the language has been
-used tends to lock in awkward choices. Until then, follow the conventions
-shown throughout this documentation and the `examples/` directory.
+`i fmt` will format an `.i` file in place to the canonical layout. It's
+**not in v1**. Pinning the formatter before the language has been used
+tends to lock in awkward choices. Until then, follow the conventions shown
+throughout this documentation and the `examples/` directory.
 
 ---
 
 ## 4. Distributing programs
 
-**v1 has no way to produce a standalone binary.** The implementation is a
-tree-walking interpreter; the only way to run an `i` program is to invoke
-`i run` on its source. To share a program, ship the `.i` files (and the
-`src/` tree if it is multi-file) and tell the recipient to install `i` and
-run them.
+**v1 can't produce a standalone binary.** The implementation is a
+tree-walking interpreter, so the only way to run an `i` program is to
+invoke `i run` on the source. To share a program, ship the `.i` files
+(and the `src/` tree if it's multi-file) and tell the recipient to
+install `i` and run them.
 
-This is not a permanent state. Two future commands are planned but not
-present in v1:
+This isn't a permanent state. Two future commands are planned but not in
+v1:
 
 ### `i build <entry>` *(planned for v2)*
 
@@ -126,8 +126,8 @@ i exec my-program.ic                  # runs it (planned alongside i build)
 ```
 
 A `.ic` file is portable across platforms — the VM is the same everywhere
-— but still requires `i` installed to run. The win over `i run` is
-startup time and execution speed; the cost is an extra build step.
+— but still needs `i` installed to run. The win over `i run` is startup
+time and execution speed. The cost is an extra build step.
 
 ### `i compile <entry> --target native` *(planned for v3)*
 
@@ -149,12 +149,12 @@ expect the recipient to have `i` installed."
 
 ## 5. Errors
 
-Type errors are the messages you will see most often. They are designed to
+Type errors are the messages you'll see most often. They're designed to
 read top-down: what went wrong, where it went wrong, the offending span,
 and a note explaining *why* the checker rejected it.
 
-Suppose a programmer adapts `examples/04-list-map.i` and forgets that the
-list holds strings rather than ints:
+Say someone adapts `examples/04-list-map.i` and forgets that the list
+holds strings instead of ints:
 
 ```i
 module Main
@@ -196,8 +196,8 @@ error[effect-leak]: function `double` is declared pure, but calls `print!`
 note: remove the `!` call, or annotate `double` with `! IO`
 ```
 
-Diagnostics are stable, scriptable text — no colour codes when stdout is
-not a TTY, no progress bars, no spinners.
+Diagnostics are stable, scriptable text. No color codes when stdout
+isn't a TTY, no progress bars, no spinners.
 
 ---
 
@@ -235,8 +235,8 @@ To type-check every example without running them:
 for f in examples/*.i; do i check "$f"; done
 ```
 
-If any example fails to check, the documentation and the implementation
-have drifted.
+If any example fails to check, the docs and the implementation have
+drifted.
 
 ---
 
