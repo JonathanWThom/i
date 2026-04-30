@@ -28,6 +28,25 @@ they're the contract.
 | 7 | **Driver / CLI** | `i run`, `i check`, source-span error messages | `docs/building.md` works as described end-to-end |
 | 8 | **Golden test harness** | CI runner over `examples/` and negative tests | `cargo test` runs all goldens; broken programs fail with expected output |
 
+## Post-v1 tracks (not committed; sketched only)
+
+After v1 ships, work splits into independent tracks. Each is a future plan, not a commitment. Approximate ordering — formatter is the natural first post-v1 step because every other tool wants stable canonical layout to depend on.
+
+| # | Plan | Track | Deliverable |
+|---|---|---|---|
+| 9 | **Formatter (`i fmt`)** | Tooling | Canonical pretty-printer turned into an in-place formatter; `i fmt path/...` rewrites files; CI mode `i fmt --check` exits non-zero on drift. |
+| 10 | **Language server** | Tooling | LSP-protocol server: hover types, go-to-definition, find references, diagnostics on save, completions. One binary, one VS Code extension as the reference client. |
+| 11 | **Editor plugins** | Tooling | TextMate grammar for syntax highlighting (drives VS Code, Sublime, others); tree-sitter grammar; reference VS Code extension; community-maintained Vim/Neovim and JetBrains adapters as scope allows. |
+| 12 | **REPL** | Tooling | Interactive `i repl` with multi-line input, type info on every binding, `:t`/`:k`/`:doc` commands. |
+| 13 | **Doc generator** | Tooling | `i doc` extracts type signatures and doc comments from `.i` files, emits browseable HTML/markdown. The stdlib reference becomes generated, not hand-written. |
+| 14 | **Bytecode VM (v2)** | Codegen | Compile to a stack-based bytecode; `.ic` artifact runnable by `i exec`. Wins on startup time and execution speed over the tree-walker. |
+| 15 | **Native codegen (v3)** | Codegen | Cranelift, LLVM, or custom backend producing standalone binaries. Decision deferred until v2 is shipped. |
+| 16 | **Concurrency (actors)** | Runtime | Actor-based message passing on top of the effect system; no shared mutable state across boundaries. Specified after v1 because it's load-bearing on language design. |
+| 17 | **Package manager** | Distribution | `i.toml` manifest, dependency resolution, registry. Shipped only when there's enough stdlib and stability that third-party libraries make sense. |
+| 18 | **Stdlib expansion** | Library | Networking, async, JSON, regex, time, env. Added as cross-cutting demand emerges, not preemptively. |
+
+These can run in parallel once v1 ships. The tooling plans (9-13) are independent of the codegen plans (14-15) and can be tackled in either order.
+
 ## Guiding rules across all plans
 
 1. **TDD.** Every implementation step is "write failing test → implement → green → commit." No bulk implementation followed by "now write tests."
@@ -45,8 +64,9 @@ The language is "v1 done" when:
 - `cargo install i-lang && i run hello.i` works on a clean machine.
 - A new reader can read `docs/tour.md` and write a small program without consulting the design spec.
 
-After v1: code generation (bytecode VM → native), concurrency (actors),
-package management, additional stdlib. None of those are committed yet.
+After v1: see "Post-v1 tracks" above for the sketched-out next plans
+(tooling, codegen, concurrency, package manager, stdlib expansion). None
+of those are committed yet.
 
 ## Currently active plan
 
@@ -54,9 +74,9 @@ package management, additional stdlib. None of those are committed yet.
 
 ## Out of scope for this roadmap
 
-- **Production polish.** No release engineering, no `homebrew` formula, no
-  language server, no editor plugins until v1 is functional.
+- **Production polish during v1.** Release engineering, `homebrew` formula,
+  language server, editor plugins are post-v1 (Plans 9-13).
 - **Performance.** The interpreter will be slow. That's fine until v1 is
-  feature-complete; optimization happens after correctness.
+  feature-complete; optimization happens in the codegen track (Plans 14-15).
 - **Backwards compatibility.** Until the language is announced, breaking
   changes are free.
