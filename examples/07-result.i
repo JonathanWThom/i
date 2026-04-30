@@ -8,7 +8,7 @@ type ParseError
     BadNumber
     OutOfRange
 
-bounded = s, lo, hi ->
+bounded = s lo hi ->
     n = F.parse s?
     n < lo or n > hi match
         True   -> Error OutOfRange
