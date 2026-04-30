@@ -317,6 +317,11 @@ The singly-linked list type. The rule across the stdlib's collection
 operations: never crash, always return `Maybe` or `Result` for partial
 functions.
 
+The higher-order operations on `List` (`map`, `filter`, `fold`, `flatMap`,
+`find`, `any`, `all`, `sortBy`) follow the effect-polymorphism rule from
+[effects.md § 7](effects.md): the callback's effect row is implicit, so the
+same function works with pure or effectful callbacks.
+
 ### `List a`
 
 ```
@@ -350,11 +355,11 @@ Keep the elements for which the predicate returns `True`.
 ### `fold : List a, b, (b, a -> b) -> b`
 
 Left fold. `xs.fold init f` reduces left-to-right with accumulator
-`init`. The two-arg lambda must be parenthesized (see
-[syntax.md § 5](syntax.md)).
+`init`. Lambda parameters are space-separated, so the two-arg lambda
+passes through the call argument list without parens.
 
 ```i
-nums.fold 0, (acc, x -> acc + x)
+nums.fold 0, acc x -> acc + x
 ```
 
 ### `reverse : List a -> List a`
@@ -379,34 +384,171 @@ larger than the length; returns `Empty` if `n <= 0`.
 `xs.drop n` is everything after the first `n` elements. Returns
 `Empty` if `n` exceeds the length.
 
-### `zip : List a, List b -> List (Pair a b)`
+### `zip : List a, List b -> List (a, b)`
 
-Pair elements positionally. The result has the length of the shorter
-input. `Pair` is `Std.Pair` (see below); used here because v1 has no
-tuples.
+Pair elements positionally into 2-tuples. The result has the length of the
+shorter input.
+
+### `find : List a, (a -> Bool) -> Maybe a`
+
+Return the first element for which the predicate returns `True`, or `None`
+if the predicate is false everywhere. Total: never crashes.
+
+```i
+nums.find x -> x > 100
+```
+
+### `any : List a, (a -> Bool) -> Bool`
+
+`True` if the predicate holds for at least one element. `False` for the
+empty list.
+
+### `all : List a, (a -> Bool) -> Bool`
+
+`True` if the predicate holds for every element. `True` for the empty list.
+
+### `flatMap : List a, (a -> List b) -> List b`
+
+Map each element to a list and concatenate the results. Equivalent to
+`xs.map f .concat`.
+
+### `concat : List (List a) -> List a`
+
+Flatten one level of nesting.
+
+### `isEmpty : List a -> Bool`
+
+`True` for `Empty`, `False` for `Cons`.
+
+### `sort : Ord a => List a -> List a`
+
+Sort by the type's `Ord` instance, ascending. Stable.
+
+### `sortBy : Ord k => List a, (a -> k) -> List a`
+
+Sort by a derived key. Stable.
+
+```i
+people.sortBy p -> p.age
+```
+
+### `intercalate : List a, List a -> List a`
+
+`xs.intercalate sep` interleaves `sep` between each pair of adjacent
+elements of `xs`. For strings, the idiom is `parts.intercalate ", "` to
+build a comma-and-space-joined string.
 
 ---
 
-## `Std.Pair`
+## `Std.Map`
 
-A two-element grouping with named fields, used where a tuple would be
-natural in other languages.
+Key-value map. Keys must implement `Ord` (the implementation is a balanced
+search tree under the hood; the user-visible contract is "ordered key
+lookup").
 
-### `Pair a, b`
+### `Map k v`
 
 ```
-type Pair a, b
-    first  : a
-    second : b
+type Map k v
 ```
 
-### `make : a, b -> Pair a b`
+A finite map from `k` to `v`. Requires `Ord k` for every operation.
 
-Construct a pair: `make x, y` is equivalent to `Pair(first = x, second = y)`.
+### `empty : Ord k => Map k v`
 
-### `swap : Pair a b -> Pair b a`
+The empty map.
 
-Swap the two fields.
+### `insert : Ord k => Map k v, k, v -> Map k v`
+
+`m.insert k v` returns a new map with `k` bound to `v`, replacing any
+prior binding for `k`.
+
+### `lookup : Ord k => Map k v, k -> Maybe v`
+
+Look up a key. Returns `None` if absent.
+
+### `delete : Ord k => Map k v, k -> Map k v`
+
+Return a new map with `k` removed. No-op if `k` is absent.
+
+### `member : Ord k => Map k v, k -> Bool`
+
+`True` if `k` has a binding in the map.
+
+### `keys : Ord k => Map k v -> List k`
+
+The keys, in ascending order.
+
+### `values : Ord k => Map k v -> List v`
+
+The values, in key-ascending order.
+
+### `toList : Ord k => Map k v -> List (k, v)`
+
+The bindings as a list of 2-tuples, in key-ascending order.
+
+### `fromList : Ord k => List (k, v) -> Map k v`
+
+Build a map from a list of 2-tuples. Later entries shadow earlier ones at
+the same key.
+
+### `size : Ord k => Map k v -> Int`
+
+Number of bindings.
+
+---
+
+## `Std.Set`
+
+Set of values. Elements must implement `Ord`.
+
+### `Set a`
+
+```
+type Set a
+```
+
+A finite set of `a`. Requires `Ord a` for every operation.
+
+### `empty : Ord a => Set a`
+
+The empty set.
+
+### `insert : Ord a => Set a, a -> Set a`
+
+Add an element. No-op if already present.
+
+### `member : Ord a => Set a, a -> Bool`
+
+`True` if the element is in the set.
+
+### `delete : Ord a => Set a, a -> Set a`
+
+Remove an element. No-op if absent.
+
+### `toList : Ord a => Set a -> List a`
+
+The elements, in ascending order.
+
+### `fromList : Ord a => List a -> Set a`
+
+Build a set from a list. Duplicates are dropped.
+
+### `union : Ord a => Set a, Set a -> Set a`
+
+Set union.
+
+### `intersection : Ord a => Set a, Set a -> Set a`
+
+Set intersection.
+
+### `difference : Ord a => Set a, Set a -> Set a`
+
+`a.difference b` is the elements in `a` that are not in `b`.
+
+### `size : Ord a => Set a -> Int`
+
+Number of elements.
 
 ---
 

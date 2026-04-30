@@ -117,6 +117,26 @@ spec revision. Until then, walking a list of unknown length goes through
 the constructor form (`Empty` and `Cons` from [`Std.List`](stdlib.md)) or
 through `head`/`tail`/`map`/`fold`.
 
+### Tuple pattern
+
+Parens around comma-separated patterns match a tuple positionally. Tuples
+have no field names, so the binding is by position: in `(a, b)` the first
+element binds to `a` and the second to `b`. The arity of the pattern has
+to match the arity of the tuple type — a `(a, b)` pattern doesn't match a
+3-tuple. The sub-patterns may be any pattern, not just identifiers.
+
+```i
+pair match
+    (a, b)      -> a + b
+
+# Tuple patterns also work in lambda parameter position.
+swap = (a, b) -> (b, a)
+fst  = (a, _) -> a
+```
+
+A 1-tuple `(x)` is just `x` in parens (grouping, not a tuple); the shortest
+tuple is `(a, b)`.
+
 ### Record destructuring
 
 A record is a sum with one implicit case. `match` on a record uses the
