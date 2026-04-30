@@ -19,4 +19,5 @@ path = "src/lib.rs"
 # none yet — Plan 2 introduces parser, error reporting
 
 [dev-dependencies]
-# none yet
+insta = { version = "1", features = ["glob"] }
+proptest = "1"
