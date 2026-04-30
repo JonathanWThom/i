@@ -157,10 +157,10 @@ type OrderId = Int
 
 ### Definition
 
-`args -> body`. Multiple args are comma-separated. No currying — `a, b -> ...` is one 2-arg function, not a chain.
+`params -> body`. Lambda parameters are space-separated. No currying — `a b -> ...` is one 2-arg function, not a chain.
 
 ```
-add  = a, b -> a + b
+add  = a b -> a + b
 ident = x -> x
 ```
 
@@ -169,7 +169,10 @@ Lambdas are first-class. The `->` form is a value anywhere an expression is expe
 ```
 nums.map x -> x * 2
 nums.filter x -> x > 0
+nums.fold 0, acc x -> acc + x
 ```
+
+The space-vs-comma distinction is: spaces separate *parameters of one function*; commas separate *arguments at one call site*. Because they're different separators, multi-arg lambdas inside calls don't need parens.
 
 ### Calls
 
@@ -182,16 +185,13 @@ add 3, (mul 4, 5)               # nest → parens for the inner
 result = f Point(x = 0, y = 0)  # construction nested in a call
 ```
 
-**Multi-argument lambdas inside calls require parens.** The same nesting rule applies: when a lambda value passed as an argument has multiple parameters, its `,` separators are indistinguishable from the call's argument separators without grouping.
+The reader rule: `,` is "next argument"; parens group. Space inside a lambda separates that lambda's parameters; it has no other meaning. Multi-arg lambdas pass through call argument lists without parens because the two separators don't collide:
 
 ```
-nums.fold 0, (acc, x -> acc + x)   # multi-arg lambda → parens
-nums.map x -> x * 2                # single-arg lambda → no parens needed
+nums.fold 0, acc x -> acc + x   # acc and x are lambda params; 0 and the lambda are call args
 ```
 
-A single-argument lambda has no internal `,` and can be written directly. Anything two-or-more argument needs parens.
-
-The reader rule: `,` is "next argument"; parens group. There is no separate "function-call" operator.
+There is no separate "function-call" operator.
 
 ### Type signatures
 
@@ -213,13 +213,21 @@ area = shape ->
         Circle r    -> 3.14 * r^2
         Rect w, h   -> w * h
 
-unwrap = m, default ->
+unwrap = m default ->
     m match
         None      -> default
         Some v    -> v
 ```
 
-`match` works on any sum type. Records can be destructured with the same syntax (one arm, the constructor name).
+`match` works on any sum type. Records can be destructured with the same syntax (one arm, the constructor name). Tuples destructure with parens-and-commas:
+
+```
+swap = pair ->
+    pair match
+        (a, b)  -> (b, a)
+```
+
+Tuple patterns also work in lambda parameters directly: `swap = (a, b) -> (b, a)`.
 
 ## Effects
 
@@ -247,6 +255,25 @@ You almost never write `!` in a signature. The compiler propagates it. The `!` a
 
 Mutation is *not* a built-in effect. There is no `mut`, no rebinding, no in-place updates. For genuine mutable state, use a `Ref` type from the standard library; its operations are tracked as `! State` in the effect row.
 
+### Effect polymorphism for higher-order functions
+
+A function-typed parameter with no explicit effect annotation is **effect-polymorphic**: the compiler attaches an implicit, fresh effect row variable to it. The enclosing function's effect row then includes whatever effects flow through the callback. This is what makes `things.map fetch!` work without forcing the user to write row variables explicitly.
+
+```
+map : List a, (a -> b) -> List b
+```
+
+Reads as: `map` takes a list and a callback that returns `b`; `map` itself returns `List b`. The callback's effect row is implicit. If you call `map` with a pure callback, `map` is pure. If you call it with an effectful one, `map` inherits those effects:
+
+```
+nums.map x -> x * 2          # pure callback → map is pure
+urls.map x -> fetch! x       # IO callback → this expression is ! IO
+```
+
+User-writable explicit effect-row variables (e.g., `(a -> b !e)` with `e` named) are not in v1. The implicit form covers the common case.
+
+The same rule applies to `filter`, `fold`, `flatMap`, and any other higher-order function: function-typed parameters carry inferred, implicit effect rows.
+
 ## Errors
 
 Errors are values. The standard idiom is `Result a e`. There are no exceptions, no panics, no implicit failure.
@@ -261,17 +288,29 @@ parseInt "42" match
 
 ### `?` early-exit sugar
 
-`expr?` is sugar for "if `expr` is `Error e`, return `Error e` from the enclosing function; otherwise unwrap to the `Ok` value." It only type-checks inside a function whose return type is a `Result _ e` with the same error type.
+`expr?` is sugar for early-exit when an `expr` represents failure. It works on both `Result` and `Maybe`:
+
+- If `expr : Result a e` and the enclosing function returns `Result _ e` (same error type), then `expr?` unwraps `Ok v` to `v` and propagates `Error e` outward.
+- If `expr : Maybe a` and the enclosing function returns `Maybe _`, then `expr?` unwraps `Some v` to `v` and propagates `None` outward.
+
+The two cases are syntactically identical; the type checker picks the right interpretation from `expr`'s type and the enclosing function's return type.
 
 ```
+use Std.Float as F
+
 parsePoint = s ->
     parts = s.split ","
     parts match
-        [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
+        [xs, ys]  -> Ok Point(x = F.parse xs?, y = F.parse ys?)
         _         -> Error WrongShape
+
+firstEven : List Int -> Maybe Int
+firstEven = xs ->
+    found = xs.find x -> x % 2 == 0
+    Some (found?)               # ? on Maybe — early-returns None if not found
 ```
 
-Without `?`, that body would need nested `match` for every fallible call. With `?`, error plumbing collapses to a single character. The compiler still verifies every error path — `?` is sugar, not an escape hatch.
+Without `?`, both bodies would need nested `match` for every fallible call. With `?`, error plumbing collapses to a single character. The compiler still verifies every error path — `?` is sugar, not an escape hatch.
 
 There is no `return` keyword. The function's value is the value of its body expression. Early-exit on errors goes through `?`. Early-exit on success would go through restructuring the expression — and is rare enough that adding a keyword for it is not worth the surface cost.
 
@@ -302,10 +341,10 @@ Implementations:
 
 ```
 impl Add Int
-    add = a, b -> intAdd a, b      # primitive
+    add = a b -> intAdd a, b      # primitive
 
 impl Eq Point
-    eq = a, b -> a.x == b.x and a.y == b.y
+    eq = a b -> a.x == b.x and a.y == b.y
 ```
 
 A type can implement multiple traits. There is no inheritance.
@@ -316,7 +355,7 @@ One file is one module. The first line declares the module name and what it expo
 
 ```
 module Geometry
-    expose Point, Shape, distance, area
+    expose Point(..), Shape(..), distance, area
 
 type Point
     x : Float
@@ -329,12 +368,33 @@ type Shape
         width : Float
         height : Float
 
-distance = a, b -> ...
+distance = a b -> ...
 area     = shape -> ...
 
 # private helper, not exposed
 square = x -> x * x
 ```
+
+**Type exports come in two forms.** `expose Point` exposes the *type* but not its constructors or fields — outside code can hold `Point` values but cannot construct or destructure them directly. `expose Point(..)` exposes the type *and* every constructor (and, for records, every field). The opaque form (`Point` without `(..)`) is what enables smart-constructor invariants:
+
+```
+module User
+    expose User, make, name        # User is opaque
+
+type User
+    name : String
+    age  : Int
+
+# Only `make` can construct a User from outside this module.
+make = name age ->
+    age < 0 match
+        True   -> Error InvalidAge
+        False  -> Ok User(name = name, age = age)
+
+name = u -> u.name
+```
+
+Outside `User`, `User(name = ..., age = ...)` is a type error; only `User.make` produces them. Field access through accessor functions (`User.name u`) still works for whatever the module re-exports.
 
 Imports use `use`:
 
@@ -390,7 +450,7 @@ area = shape ->
         Circle r    -> 3.14159 * r^2
         Rect w, h   -> w * h
 
-scale = shape, factor ->
+scale = shape factor ->
     shape match
         Circle r    -> Circle(radius = r * factor)
         Rect w, h   -> Rect(width = w * factor, height = h * factor)
@@ -429,11 +489,24 @@ The following remain undecided. I've recorded recommendations next to each; the 
 
 These have been considered and deferred:
 
-- **Tuples.** Records cover the same use cases with named fields and prevent positional-confusion bugs. Adding tuples doubles the "data shape" surface for marginal benefit.
-- **Row polymorphism.** "Any record with an `x : Float` field" is genuinely sparse-feeling but expensive in the type checker. Revisit if the language outgrows nominal records.
+- **Row polymorphism.** "Any record with an `x : Float` field" is genuinely sparse-feeling but expensive in the type checker. Revisit if the language outgrows nominal records. (User-writable explicit row variables for effects are also out — the implicit form covers HOFs.)
 - **Macros / metaprogramming.** Conflicts with "fits in your head."
 - **Linear / affine / dependent types.** Excluded earlier under safety choices.
 - **Lazy evaluation.** Strict by default; `Lazy a` library type if needed.
+
+## Tuples
+
+`(a, b)` is a 2-tuple value with type `(A, B)`. `(a, b, c)` is a 3-tuple. Larger arities are allowed but discouraged — when you find yourself writing a 4-tuple, it's almost always clearer as a record.
+
+```
+pair  = (1, "hello")              # value, type (Int, String)
+swap  = (a, b) -> (b, a)          # destructured in the lambda's pattern
+fst   = (a, _) -> a
+```
+
+Tuples destructure with the same shape: `(x, y) -> ...` in a lambda, `(x, y) ->` in a `match` arm. There is no field access — tuples are positional. If you find yourself reaching for `.first`/`.second`, use a record instead.
+
+A 1-tuple `(x)` is just `x` in parens (grouping, not a tuple). The shortest tuple is `(a, b)`.
 
 ## v1 standard library
 
@@ -441,18 +514,20 @@ The minimum stdlib v1 must ship:
 
 - `Std.Bool` — `True`, `False`, `and`, `or`, `not`, `xor`
 - `Std.Int` (= i64) — arithmetic via traits, `compare`, `parse : String -> Result Int ParseError`, `toFloat`, `toString`
-- `Std.Float` (= f64) — same shape as `Int`; plus `sqrt`, `pow`, `sin`, `cos`, `parse : String -> Result Float ParseError`
+- `Std.Float` (= f64) — same shape as `Int`; plus `sqrt`, `pow`, `sin`, `cos`, `tan`, `exp`, `ln`, `parse : String -> Result Float ParseError`
 - `Std.Char` — `toUpper`, `toLower`, `isDigit`, `isAlpha`
 - `Std.String` — `length`, `++` (concat), `split`, `toChars`, `fromChars`, `contains`, `trim`
-- `Std.List a` — constructors `Empty` / `Cons`, ops `map`, `filter`, `fold`, `length`, `reverse`, `head : List a -> Maybe a`, `tail`, `take`, `drop`, `zip`
-- `Std.Maybe a` — `None`, `Some`, `withDefault`, `map`, `andThen`
+- `Std.List a` — constructors `Empty` / `Cons`, ops `map`, `filter`, `fold`, `flatMap`, `concat`, `length`, `isEmpty`, `reverse`, `head : List a -> Maybe a`, `tail`, `take`, `drop`, `zip : List a, List b -> List (a, b)`, `find : List a, (a -> Bool) -> Maybe a`, `any`, `all`, `sort` (when `Ord a`), `sortBy` (custom key), `intercalate`
+- `Std.Map k v` (requires `Ord k`) — `empty`, `insert`, `lookup : Map k v, k -> Maybe v`, `delete`, `member`, `keys`, `values`, `toList : Map k v -> List (k, v)`, `fromList`, `size`
+- `Std.Set a` (requires `Ord a`) — `empty`, `insert`, `member`, `delete`, `toList`, `fromList`, `union`, `intersection`, `difference`, `size`
+- `Std.Maybe a` — `None`, `Some`, `withDefault`, `map`, `andThen`, plus `?` sugar in the language
 - `Std.Result a e` — `Ok`, `Error`, `withDefault`, `map`, `mapError`, `andThen`, plus `?` sugar in the language
 - `Std.IO` — `print`, `println`, `readLine`, `readFile`, `writeFile`. All return `! IO`.
 - `Std.Ref a` — `make`, `get`, `set` for mutable cells; ops are `! State`
 
 **Traits in the prelude** (auto-imported, not in any one module): `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, `Neg`, `Pow`, `Concat`, `Show`. Operators desugar to these — including `^` to `Pow.pow` (implemented on `Float`) and `++` to `Concat.concat` (implemented on `String` and `List a`). `Show.show : a -> String` is the conversion that `print!` and string-concatenation idioms rely on; every primitive type and most stdlib types have a derived `Show` impl.
 
-Because v1 has no tuples, the stdlib provides `Std.Pair` (a record with `first : a` and `second : b`) for the few stdlib functions that need to return two values together — most notably `Std.List.zip`, which returns `List (Pair a b)` rather than `List (a, b)`.
+Higher-order functions in the stdlib (`map`, `filter`, `fold`, `flatMap`, `find`, `any`, `all`, `sortBy`) follow the effect-polymorphism rule from the Effects section: their callback's effect row is implicit, so the same function works with pure or effectful callbacks.
 
 Numeric tower stays minimal: only `Int` (i64) and `Float` (f64). Sized integers (`Int8`, `UInt32`, etc.) and arbitrary-precision can be added without breaking changes.
 
