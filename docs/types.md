@@ -215,14 +215,20 @@ body can't inspect or branch on the type. If you want behavior that varies
 by type, use a trait (see § 7).
 
 A function that uses *both* `a` and `b` constrains them independently:
-`zip : List a, List b -> List (Pair a b)` (from [`Std.List`](stdlib.md);
-`Pair` is the record type `Std.Pair` since v1 has no tuples) takes
-two lists whose element types are decided independently. Same letter means
-same type across the signature; different letters mean independently
-inferred.
+`zip : List a, List b -> List (a, b)` (from [`Std.List`](stdlib.md); the
+result is a list of 2-tuples) takes two lists whose element types are
+decided independently. Same letter means same type across the signature;
+different letters mean independently inferred.
 
 For trait-constrained generics — `a` such that `Eq a`, for example — see
 § 7.
+
+**Higher-order function parameters are effect-polymorphic.** A function-typed
+parameter with no explicit effect annotation carries an implicit, fresh
+effect row variable; the HOF's own effect row is the union of those callback
+rows plus the body's effects. This is what lets `nums.map x -> x * 2` stay
+pure while `urls.map x -> fetch! x` picks up `! IO`. See
+[effects.md](effects.md) for the rule and worked examples.
 
 ---
 
@@ -285,8 +291,8 @@ An implementation is `impl Trait Type` followed by the method bodies:
 
 ```i
 impl Eq Point
-    eq = a, b -> a.x == b.x and a.y == b.y
-    ne = a, b -> not (Eq.eq a, b)
+    eq = a b -> a.x == b.x and a.y == b.y
+    ne = a b -> not (Eq.eq a, b)
 ```
 
 **Operator desugaring.** Most operators are sugar for trait method calls.
@@ -380,10 +386,15 @@ the inner value. That's the safety mechanism null and unchecked exceptions
 in other languages don't have.
 
 For a chain of fallible calls, the `?` early-exit operator collapses the
-plumbing. `expr?` returns `Error e` from the enclosing function if `expr`
-is `Error e`; otherwise it evaluates to the unwrapped `Ok` value. It only
-type-checks inside a function whose return type is `Result _ e` with the
-matching error type.
+plumbing. `expr?` returns the failure from the enclosing function if `expr`
+represents failure; otherwise it evaluates to the unwrapped success value.
+
+`?` works on both `Result` and `Maybe`. Inside a function returning
+`Result _ e`, `expr? : Result a e` unwraps `Ok` and propagates `Error e`.
+Inside a function returning `Maybe _`, `expr? : Maybe a` unwraps `Some` and
+propagates `None`. The two cases are syntactically identical; the type
+checker disambiguates from `expr`'s type and the enclosing function's return
+type.
 
 ```i
 parsePoint = s ->
@@ -391,6 +402,11 @@ parsePoint = s ->
     parts match
         [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
         _         -> Error WrongShape
+
+firstEven : List Int -> Maybe Int
+firstEven = xs ->
+    found = xs.find x -> x % 2 == 0
+    Some (found?)
 ```
 
 `?` is sugar — the compiler still checks every error path. See

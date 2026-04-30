@@ -120,10 +120,11 @@ double = n -> n * 2
 ### `->` — function
 
 Separates parameters from body in a function value, and arg types from result
-type in a function signature. Multiple parameters are comma-separated.
+type in a function signature. Multiple lambda parameters are space-separated;
+multiple argument types in a signature are comma-separated.
 
 ```i
-add = a, b -> a + b
+add = a b -> a + b
 ```
 
 ### `.` — member access
@@ -202,22 +203,24 @@ main =
 
 ### Definition
 
-`args -> body` is a function value. Arguments are comma-separated lowercase
-identifiers. There's no currying: `a, b -> ...` is one two-argument
+`args -> body` is a function value. Parameters are space-separated lowercase
+identifiers. There's no currying: `a b -> ...` is one two-argument
 function, not a chain.
 
 ```i
-add = a, b -> a + b
+add = a b -> a + b
 ```
 
 ### Lambda expression
 
 The same `args -> body` form is a value anywhere an expression is expected.
-Single-argument lambdas pass directly inside calls; multi-argument lambdas
-require parens (see § 5).
+Single- and multi-argument lambdas both pass directly inside calls without
+extra parens — lambda parameters are space-separated and call arguments are
+comma-separated, so the two never collide (see § 5).
 
 ```i
 nums.map x -> x * 2
+nums.fold 0, acc x -> acc + x
 ```
 
 ### Type signature
@@ -286,13 +289,12 @@ p1.distance p2
 
 ### Multi-argument lambda inside a call
 
-Wrap a multi-arg lambda in parens when passing it as an argument, so the
-lambda's commas don't get read as more arguments. Single-arg lambdas need
-no parens.
+Multi-argument lambdas pass through call argument lists without extra parens:
+lambda parameters are space-separated and call arguments are comma-separated,
+so the two separators don't collide.
 
 ```i
-# nums.fold 0, acc, x -> acc + x      # ambiguous: parser sees four args to fold
-nums.fold 0, (acc, x -> acc + x)      # parens disambiguate
+nums.fold 0, acc x -> acc + x       # acc and x are lambda params; 0 and the lambda are call args
 ```
 
 ### Construction
@@ -504,6 +506,18 @@ parts match
     _       -> ...
 ```
 
+### Tuple pattern
+
+Parens around comma-separated patterns match a tuple positionally. The shape
+of the pattern matches the shape of the tuple type; `(a, b)` matches any
+2-tuple and binds its first and second components. Tuple patterns also work
+in lambda parameter position: `swap = (a, b) -> (b, a)`.
+
+```i
+pair match
+    (a, b)  -> a + b
+```
+
 ### Record destructuring
 
 A `match` arm on a record uses the constructor name with kwargs, mirroring
@@ -570,9 +584,9 @@ others in v1.
 
 ### Form
 
-`expr?` evaluates `expr`; if the result is `Error e`, the enclosing function
-returns `Error e` immediately; otherwise the expression evaluates to the
-unwrapped `Ok` value.
+`expr?` evaluates `expr`; if the result represents failure, the enclosing
+function returns the failure immediately; otherwise the expression evaluates
+to the unwrapped success value.
 
 ```i
 n = parseInt s?
@@ -580,13 +594,27 @@ n = parseInt s?
 
 ### Type rule
 
-`expr?` only type-checks inside a function whose return type is
-`Result _ e` with the same error type `e` as `expr`. The compiler still
-verifies every error path. `?` is sugar, not an escape hatch.
+`?` works on both `Result` and `Maybe`:
+
+- If `expr : Result a e` and the enclosing function returns `Result _ e`
+  with the same error type, `expr?` unwraps `Ok v` to `v` and propagates
+  `Error e` outward.
+- If `expr : Maybe a` and the enclosing function returns `Maybe _`,
+  `expr?` unwraps `Some v` to `v` and propagates `None` outward.
+
+The two cases are syntactically identical; the type checker picks the right
+interpretation from `expr`'s type and the enclosing function's return type.
+The compiler still verifies every error path. `?` is sugar, not an escape
+hatch.
 
 ```i
 parsePoint = s ->
     Ok Point(x = parseFloat xs?, y = parseFloat ys?)
+
+firstEven : List Int -> Maybe Int
+firstEven = xs ->
+    found = xs.find x -> x % 2 == 0
+    Some (found?)
 ```
 
 ---
@@ -601,7 +629,20 @@ not exposed is private.
 
 ```i
 module Geometry
-    expose Point, distance
+    expose Point(..), distance
+```
+
+### Type exports
+
+A type name in `expose` comes in two forms. `expose Point` exposes the type
+opaquely: outside code can hold `Point` values but cannot construct or
+destructure them. `expose Point(..)` exposes the type *and* every constructor
+(and, for records, every field). The opaque form enables smart-constructor
+invariants — only functions in the defining module can build instances.
+
+```i
+expose Point          # type only — opaque
+expose Point(..)      # type plus all constructors and fields
 ```
 
 ### Import (whole module)
@@ -690,7 +731,7 @@ per method declared in the trait.
 
 ```i
 impl Eq Point
-    eq = a, b -> a.x == b.x and a.y == b.y
+    eq = a b -> a.x == b.x and a.y == b.y
 ```
 
 ### Coherence

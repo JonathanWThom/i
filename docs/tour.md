@@ -73,12 +73,12 @@ For the full operator and binding rules, see [syntax.md](syntax.md).
 
 ## 3. Functions
 
-A function is `args -> body`. Multiple arguments are comma-separated. There's
-no currying: `a, b -> ...` is one two-argument function, not a chain.
+A function is `args -> body`. Multiple parameters are space-separated. There's
+no currying: `a b -> ...` is one two-argument function, not a chain.
 
 ```i
 double = n -> n * 2
-add    = a, b -> a + b
+add    = a b -> a + b
 ident  = x -> x
 ```
 
@@ -97,22 +97,27 @@ another:
 add 3, (double 4)   # → 11
 ```
 
+The asymmetry is on purpose. Spaces separate *parameters of one function*;
+commas separate *arguments at one call site*. Because they're different
+separators, multi-arg lambdas pass through call argument lists without parens.
+
 Lambdas are first-class. Anywhere an expression fits, `args -> body` fits:
 
 ```i
 nums.map x -> x * 2
 nums.filter x -> x > 0
+nums.fold 0, acc x -> acc + x
 ```
 
-If you want to write a function's type, the form is `args -> result`:
+If you want to write a function's type, the form is `args -> result`. Type
+signatures use commas — the same separator the call site uses:
 
 ```i
 double : Int -> Int
 add    : Int, Int -> Int
 ```
 
-The comma-separated arg types mirror the comma-separated lambda form. `add`
-takes two `Int`s, not an `Int` that returns `Int -> Int`.
+`add` takes two `Int`s, not an `Int` that returns `Int -> Int`.
 
 Next: bundling values into records. For the formal rules on functions and
 type signatures, see [types.md § 5](types.md) and [syntax.md § 4](syntax.md).
@@ -238,9 +243,14 @@ parseInt "42" match
 ```
 
 When you have several fallible calls in a row, `?` collapses the boilerplate.
-`expr?` reads: if `expr` is `Error e`, return `Error e` from the enclosing
-function; otherwise unwrap the `Ok` value. It only type-checks inside a
-function whose return type is `Result _ e` with the same error type.
+`expr?` reads: if `expr` represents failure, return the failure from the
+enclosing function; otherwise unwrap the success value.
+
+`?` works on both `Result` and `Maybe`. Inside a function returning
+`Result _ e` it propagates `Error e`. Inside a function returning `Maybe _`
+it propagates `None`. The two cases are syntactically identical; the type
+checker picks the right interpretation from `expr`'s type and the enclosing
+function's return type.
 
 ```i
 parsePoint = s ->
@@ -248,6 +258,11 @@ parsePoint = s ->
     parts match
         [xs, ys]  -> Ok Point(x = parseFloat xs?, y = parseFloat ys?)
         _         -> Error WrongShape
+
+firstEven : List Int -> Maybe Int
+firstEven = xs ->
+    found = xs.find x -> x % 2 == 0
+    Some (found?)               # ? on Maybe — early-returns None if not found
 ```
 
 If either `parseFloat` returns `Error`, `parsePoint` returns that error
@@ -320,14 +335,19 @@ A few more, for flavor:
 
 ```i
 positives = nums.filter x -> x > 0
-total     = nums.fold 0, (acc, x -> acc + x)
+total     = nums.fold 0, acc x -> acc + x
 ```
 
 `fold` takes the initial accumulator and a two-arg function that combines
-the accumulator with the next element. The parens around the lambda are the
-same nesting trick from section 3: they stop the lambda's commas from being
-read as more arguments to `fold`. There's no `for` loop in `i`. To walk a
-list, reach for `map`, `filter`, or `fold`.
+the accumulator with the next element. Because parameters of the lambda are
+space-separated and call arguments are comma-separated, the lambda passes
+through the call argument list without parens. There's no `for` loop in `i`.
+To walk a list, reach for `map`, `filter`, or `fold`.
+
+When you do need to group two values together as one — say, an index and an
+element from `zip` — use a tuple: `(a, b)` is a two-tuple value with type
+`(A, B)`. Tuples destructure with the same shape. See
+[syntax.md § 7](syntax.md) and the spec for the full rule.
 
 The standard library never crashes on an empty list. `head` returns `Maybe a`,
 not `a`. For the full set of operations, see
@@ -342,18 +362,25 @@ what it exposes. Everything else in the file is private.
 
 ```i
 module Geometry
-    expose Point, distance
+    expose Point(..), distance
 
 type Point
     x : Float
     y : Float
 
-distance = a, b ->
+distance = a b ->
     ((a.x - b.x)^2 + (a.y - b.y)^2)^0.5
 
 # private helper, not exposed
 square = x -> x * x
 ```
+
+A type is exposed in one of two forms. `expose Point` exposes the *type* but
+not its constructors or fields — outside code can hold `Point` values but
+not construct or destructure them. `expose Point(..)` exposes the type *and*
+all of its constructors and fields. The opaque form is what enables
+smart-constructor invariants; the `(..)` form is the everyday choice when
+you want callers to construct values directly.
 
 To use names from another module, write `use`:
 
