@@ -191,7 +191,59 @@ calling those operations.
 
 ---
 
-## 7. What this catches
+## 7. Effect polymorphism for higher-order functions
+
+Higher-order functions — `map`, `filter`, `fold`, `flatMap`, anything that
+takes a function as a parameter — need to work with both pure and effectful
+callbacks. Otherwise you'd need a `mapIO` separate from `map`, a `foldIO`
+separate from `fold`, and so on, multiplied by every effect label.
+
+`i` handles this with a single rule: **a function-typed parameter with no
+explicit effect annotation is effect-polymorphic.** The compiler attaches
+an implicit, fresh effect row variable to the callback's type, and the
+HOF's own effect row is the union of those callback rows plus whatever the
+HOF's body does on its own.
+
+```
+map : List a, (a -> b) -> List b
+```
+
+Read this as: `map` takes a list and a callback that turns `a` into `b`,
+and produces a `List b`. The callback's effect row is implicit. Whatever
+effects flow through the callback flow through `map` too.
+
+```i
+nums = [1, 2, 3]
+
+# Pure callback → map's invocation is pure.
+double = n -> n * 2
+doubled = nums.map double             # List Int — pure
+
+# Effectful callback → the same map call now carries ! IO.
+shout = n ->
+    print! "saw " ++ show n
+    n
+[4, 5, 6].map shout                   # ! IO inferred
+```
+
+You don't write the row variable. There's no syntax for naming a callback's
+effect row in v1 — the implicit form covers the common case. The same rule
+applies to every HOF in the stdlib: `filter`, `fold`, `flatMap`, `find`,
+`any`, `all`, `sortBy`. If you write your own HOF, its function-typed
+parameters get the same implicit treatment.
+
+What this means in practice: you stop noticing the rule. The same `map` you
+use to double a list of numbers is the `map` you use to print each item; the
+type checker tracks the difference. The signature reads the same; only the
+inferred effect row at the call site changes.
+
+User-writable explicit effect-row variables (`(a -> b !e)` with `e` named)
+are out of v1. If you need that level of control, the implicit form already
+expresses it; you just can't refer to the variable by name.
+
+---
+
+## 8. What this catches
 
 The everyday payoff is simple: you can't accidentally do IO from a
 function you thought was pure. Suppose you drop a `print!` into a function
