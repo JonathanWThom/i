@@ -34,7 +34,7 @@ The first non-blank, non-comment line of every file declares the module:
 
 ```i
 module Geometry
-    expose Point, distance
+    expose Point(..), distance
 ```
 
 `module Name` names the module. The indented `expose` clause lists the
@@ -42,10 +42,17 @@ names visible to importers: types, functions, constants, traits.
 Anything bound or declared elsewhere in the file but not named in `expose`
 is private and inaccessible outside this file.
 
-`expose` accepts type names, value names, and trait names. Exposing a
-type exposes its variants and constructors with it; v1 has no
-hidden-constructor mechanism. Multiple `expose` lines concatenate, and
-order doesn't matter.
+`expose` accepts type names, value names, and trait names. Multiple `expose`
+lines concatenate, and order doesn't matter.
+
+**Type exports come in two forms.** `expose Point` exposes the *type*
+opaquely: outside code can hold `Point` values but cannot construct or
+destructure them. `expose Point(..)` exposes the type *and* every constructor
+(and, for records, every field). The opaque form enables smart-constructor
+invariants — only functions in the defining module can produce values, so
+the module gets to enforce any invariant the type encodes. The `(..)` form
+is the everyday choice when callers should construct values directly. The
+two forms are explicit; there's no implicit re-export of constructors.
 
 ---
 
@@ -111,19 +118,20 @@ structure is how it locates the file, but the declaration is the source
 of truth.
 
 A worked two-file program lives in `examples/08-modules-lib.i` and
-`examples/08-modules-app.i`. `Geometry` exposes `Point` and `distance`;
-`Main` cherry-picks both and uses them unqualified:
+`examples/08-modules-app.i`. `Geometry` exposes `Point(..)` (so callers can
+construct `Point` values) and `distance`; `Main` cherry-picks both and uses
+them unqualified:
 
 ```i
 # examples/08-modules-lib.i
 module Geometry
-    expose Point, distance
+    expose Point(..), distance
 
 type Point
     x : Float
     y : Float
 
-distance = a, b ->
+distance = a b ->
     ((a.x - b.x)^2 + (a.y - b.y)^2)^0.5
 ```
 
@@ -155,7 +163,7 @@ module Geometry
 
 square = x -> x * x          # private helper
 
-distance = a, b ->
+distance = a b ->
     (square (a.x - b.x) + square (a.y - b.y))^0.5
 ```
 
@@ -163,9 +171,39 @@ distance = a, b ->
 from another module is a compile-time error, and a cherry-pick `use
 Geometry (square)` fails for the same reason: the name is not exported.
 
+**Type opacity.** Types are exposed at one of two granularities. `expose Point`
+exposes the *type* but not its constructors or fields, so external code can
+refer to `Point` in signatures and hold `Point` values, but cannot build them
+with `Point(x = 0, y = 0)` or destructure them by field. `expose Point(..)`
+exposes the type *and* every constructor and field. Choose the opaque form
+when the module enforces invariants on the values it produces — the
+constructor stays inside the module, and callers go through whatever
+smart-constructor functions you also expose.
+
+```i
+module User
+    expose User, make, name        # User is opaque
+
+type User
+    name : String
+    age  : Int
+
+make = name age ->
+    age < 0 match
+        True   -> Error InvalidAge
+        False  -> Ok User(name = name, age = age)
+
+name = u -> u.name
+```
+
+Outside `User`, `User(name = ..., age = ...)` is a type error. Only `make`
+produces them, so the "non-negative age" invariant is enforced for every
+caller.
+
 Visibility is checked at the module boundary, not within the file.
 There's no protected, internal, or friend visibility. A name is either
-exposed or private. The two-level model is on purpose: refining further
+exposed or private (and a type is exposed either opaquely or with its
+constructors). The two-level model is on purpose: refining further
 would multiply the rules a reader has to hold in their head, and the
 same discipline can be had by splitting modules.
 
