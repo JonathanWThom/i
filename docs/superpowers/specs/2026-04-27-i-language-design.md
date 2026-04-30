@@ -35,7 +35,7 @@ Strong typing and compilation are non-negotiable. Roc-grade safety: pure with tr
 
 ## The whole grammar (informal)
 
-There are exactly four binding operators a reader needs to know:
+Four operators carry the structure of a program:
 
 | Symbol | Meaning |
 |---|---|
@@ -44,7 +44,115 @@ There are exactly four binding operators a reader needs to know:
 | `->` | function — `args -> body` |
 | `.`  | member access / namespace — `Type.name`, `instance.name` |
 
-Plus literals (`42`, `3.14`, `"hi"`, `[1, 2, 3]`), parens for grouping, and the `!` effect marker. That is the entire surface.
+Arithmetic and comparison (`+`, `-`, `*`, `/`, `^`, `==`, `<`, …) desugar
+to trait calls; `++` is concatenation; `!` marks an effectful call; `?`
+is the early-exit postfix; parens group; brackets build list literals.
+None of those are part of the binding surface, but they're all part of
+what you read on the page. The full operator table lives in
+[syntax.md § 11](../../syntax.md).
+
+### Precedence and associativity
+
+Listed loosest to tightest. Operators on the same row have equal
+precedence; right-most column says how they associate.
+
+| Rank | Operators                          | Associativity   |
+|------|------------------------------------|-----------------|
+| 1    | `->` (lambda body)                 | right; greedy   |
+| 2    | `or`                               | function — paren-free call |
+| 3    | `and`                              | function — paren-free call |
+| 4    | `not`                              | function — paren-free call |
+| 5    | `==`, `/=`, `<`, `<=`, `>`, `>=`   | non-associative |
+| 6    | `++`                               | right           |
+| 7    | `+`, `-` (binary)                  | left            |
+| 8    | `*`, `/`                           | left            |
+| 9    | `^`                                | right           |
+| 10   | `-` (unary)                        | prefix          |
+| 11   | function call (juxtaposition)      | left            |
+| 12   | `.`, postfix `?`, postfix `!`      | left            |
+| 13   | atoms: literals, identifiers, `()` | —               |
+
+Two consequences worth saying out loud. Comparison doesn't chain:
+`a < b < c` is a parse error, not a conjunction. Lambda `->` has the
+lowest precedence in expression position, so a body like
+`x -> a + b * c` is `x -> (a + (b * c))`, with `*` tighter than `+` as
+expected.
+
+### Lambda body termination
+
+`->` is greedy on the right. The body extends rightward until one of:
+
+- a newline at or below the indentation of the binding the lambda lives
+  inside,
+- a `,` at the enclosing call's argument-list depth,
+- a `)` or `]` at the enclosing depth,
+- a closing `match` arm boundary (the next pattern in an indented arm
+  block),
+- end of input.
+
+This is what makes multi-arg lambdas pass through call argument lists
+without parens:
+
+```
+nums.fold 0, acc x -> acc + x
+```
+
+`acc + x` extends to the end of the line; the `,` belongs to the outer
+call, not the lambda. Same rule, different surface, with parens:
+
+```
+xs.map (x -> x + 1).reverse        # parens close the body before `.`
+```
+
+If you want a multi-argument lambda whose body needs to span multiple
+lines, give it an indented block:
+
+```
+process =
+    xs.fold initial, acc x ->
+        cleaned = clean x
+        acc.append cleaned
+```
+
+The block's indentation defines the body's right edge; the next sibling
+binding closes it.
+
+### Method chaining
+
+`.` binds to the immediately preceding *atom* (an identifier, a paren
+group, a literal, a list literal). It does **not** absorb a previously
+consumed call's arguments. This is the rule that makes a written name
+unambiguous:
+
+```
+nums.map double                    # OK — atom is `nums`, then `.map`, then call
+nums.map double.filter pred        # parses as `nums.map (double.filter pred)`
+(nums.map double).filter pred      # chain on a call result requires parens
+```
+
+The reading rule out loud: every `.` is a member access on whatever sits
+immediately to its left. To "do this method, then that method on the
+result," wrap the first call in parens. The price is one pair of parens
+per chain link; the gain is that you never have to think about whether
+your last token belongs to the method or the chain.
+
+Pretty-printers and formatters are encouraged to break long chains
+across lines:
+
+```
+nums
+    .map double
+    .filter positive
+    .fold 0, acc x -> acc + x
+```
+
+Each `.method` aligns at the same column. Layout is a formatting
+convention, not a parser rule.
+
+The `!` postfix and the `?` postfix follow the same atom rule: they
+attach to the call or expression immediately to their left. `print!`
+attaches to `print`; `parseInt s?` attaches to `parseInt s` (the call,
+treated as one expression at the call-juxtaposition level).
 
 ## Types
 
@@ -86,6 +194,36 @@ p2 = p1(x = 5)                  # copy of p1 with x = 5
 A type applied to kwargs constructs. An instance applied to kwargs produces a copy with overrides. Same surface, two related semantics.
 
 Construction parens are *required* (not just grouping) because the inner `=` of a kwarg would otherwise collide with the outer binding `=`.
+
+### Methods on sum types
+
+A method written at the *type level* of a sum (outside any specific
+variant's block) binds `self` to the matched value. The body almost
+always opens with a `match` on `self`:
+
+```
+type Shape
+    Circle
+        radius : Float
+    Rect
+        width  : Float
+        height : Float
+
+    area = ->
+        self match
+            Circle r    -> 3.14159 * r^2
+            Rect w, h   -> w * h
+```
+
+The `area = -> ...` form is a zero-argument method (other than the
+implicit `self`). Calling it is `myShape.area`, no parens.
+
+Methods on individual variants — `=` bindings nested *inside* a single
+variant's field block — are out of v1. The per-variant binding raises
+the question of how the variant's method type relates to the sum type
+itself, which is the kind of design step that shouldn't slip in via the
+back door. v1 sum-type methods always live at the type level and
+dispatch with `match`.
 
 ### Sum types
 
@@ -273,6 +411,30 @@ urls.map x -> fetch! x       # IO callback → this expression is ! IO
 User-writable explicit effect-row variables (e.g., `(a -> b !e)` with `e` named) are not in v1. The implicit form covers the common case.
 
 The same rule applies to `filter`, `fold`, `flatMap`, and any other higher-order function: function-typed parameters carry inferred, implicit effect rows.
+
+#### Explicit-pure callbacks
+
+One escape hatch from the implicit form: `! ()` written as a callback's
+effect row pins the callback as **pure**. The empty row `()` admits no
+effects at all.
+
+```
+trait Show a
+    show : a -> String                # implicit row, but...
+    show : (a -> String ! ())         # explicit form: cannot do IO
+```
+
+This matters in two situations. Trait methods that have to remain pure
+to make sense (`Show.show` mustn't depend on the world; `Eq.eq`
+mustn't have side effects) can pin the row. And HOFs whose semantics
+depend on the callback being pure — a memoization cache keyed on the
+input, an idempotent retry — can refuse to compile against an
+effectful callback at the type level.
+
+The implicit form stays the default. The vast majority of HOFs do the
+right thing without anyone naming a row. `! ()` is the one explicit
+spelling, and it's the only place a user can write an effect row on a
+callback in v1.
 
 ## Errors
 
