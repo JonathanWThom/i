@@ -125,15 +125,17 @@ matching feature ships, not before v1 freezes.
   is open.
 - **`corecursive` annotation** — syntax and checking rules for marking
   productive functions are sketched in [types.md § 8](types.md) but not
-  pinned.
+  pinned. **Workaround until then:** structure the function as a fold
+  over a list (`Std.List.fold`), which the termination checker accepts
+  because the list shrinks at each step. For unbounded loops, use
+  `Std.Ref` to hold a counter and bound the iteration explicitly. Both
+  are stopgaps; once the annotation lands, the natural recursive form
+  will work directly.
 - **Rest patterns `[head, ...tail]`** — appear in examples; the
   exhaustiveness algorithm for them is not yet specified (see
   [patterns.md § 2](patterns.md)).
 - **Guards in `match`** — `match ... if <expr> -> ...` is mentioned,
   but its interaction with exhaustiveness checking is undecided (see
   [patterns.md § 5](patterns.md)).
-- **`Std.Env`** — reserved for reading program arguments and environment
-  variables (see [building.md § 3](building.md)); its function list is
-  not enumerated in [stdlib.md](stdlib.md).
 - **Error type for `readFile` / `writeFile`** — variants of the I/O
   error type are not pinned; docs use a placeholder `IoError`.

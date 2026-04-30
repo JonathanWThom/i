@@ -664,6 +664,41 @@ existing contents.
 
 ---
 
+## `Std.Env`
+
+Read-only access to the running program's environment: command-line
+arguments and process environment variables. Every operation here
+carries `! Env`. The label is separate from `IO` because reading the
+environment doesn't depend on external timing — a function that reads
+its args is still deterministic given a fixed environment.
+
+### `args : ! Env -> List String`
+
+The command-line arguments passed to the program, in order. The first
+element is the first user argument, not the program name (i.e., it
+already drops `argv[0]`). Empty list when no arguments were passed.
+
+```i
+use Std.Env
+
+main =
+    Std.Env.args! match
+        []          -> print! "no arguments"
+        [first, _]  -> print! "first arg: " ++ first
+        _           -> print! "many args"
+```
+
+### `var : String ! Env -> Maybe String`
+
+`Std.Env.var name` returns `Some value` if the variable is set,
+`None` if it isn't.
+
+```i
+home = Std.Env.var! "HOME"
+```
+
+---
+
 ## `Std.Ref`
 
 Mutable cells. The only `! State` surface in v1. Use sparingly; most

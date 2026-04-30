@@ -97,7 +97,7 @@ boundary. `print : String ! IO -> Unit` has `! IO`, so it does.
 
 ## 4. What effects exist in v1
 
-Two labels, total:
+Three labels, total:
 
 - **`IO`** — anything that crosses the program/world boundary. The
   `Std.IO` operations all carry `! IO`: `print`, `println`, `readLine`,
@@ -108,15 +108,21 @@ Two labels, total:
 - **`State`** — mutable cell operations, exposed through `Std.Ref`.
   `Ref.make`, `Ref.get`, and `Ref.set` all carry `! State`. A function that
   reads or writes a `Ref` picks up `! State` in its inferred row.
+- **`Env`** — read-only access to the program's environment: command-line
+  arguments and process environment variables, exposed through `Std.Env`.
+  Reading `Std.Env.args` or `Std.Env.var` carries `! Env`. The label is
+  separate from `IO` because the read is observable but doesn't depend on
+  external timing or ordering — a function that reads its args is still
+  deterministic given a fixed environment.
 
 That's the entire effect alphabet for v1. There are no user-defined effects
 in v1; adding effect labels (an exception effect, a logging effect, an
 algebraic-effect handler system) is deferred to a later spec. See
 [limitations.md](limitations.md).
 
-`IO` and `State` are tracked independently. A function that prints to the
-console and reads a `Ref` has type `... ! IO, State -> ...`. Order within
-a row doesn't matter.
+`IO`, `State`, and `Env` are tracked independently. A function that prints
+to the console, reads a `Ref`, and reads its args has type
+`... ! IO, State, Env -> ...`. Order within a row doesn't matter.
 
 ---
 
@@ -240,6 +246,39 @@ inferred effect row at the call site changes.
 User-writable explicit effect-row variables (`(a -> b !e)` with `e` named)
 are out of v1. If you need that level of control, the implicit form already
 expresses it; you just can't refer to the variable by name.
+
+### Pinning a callback as pure
+
+The implicit form covers the everyday case. The exception is a callback
+that genuinely *must* be pure — and the language has one explicit
+spelling for that: `! ()` is the empty effect row, written on a callback
+to refuse anything but pure functions.
+
+```i
+trait Show a
+    show : (a -> String ! ())
+```
+
+`show` here can't be implemented by a function that does IO. The trait
+has chosen to constrain itself, and the type checker holds the line for
+every impl.
+
+The two situations where this matters in practice:
+
+1. **Trait methods that lose their meaning if effectful.** `Show.show`,
+   `Eq.eq`, `Ord.compare` — the contract is "given the same inputs,
+   produce the same output, and don't poke the world on the way." Pin
+   them with `! ()` and the contract becomes a type rule.
+2. **HOFs whose semantics depend on a pure callback.** A memoization
+   cache keyed on input. An idempotent retry. A parallel reducer that
+   batches in arbitrary order. If the callback could do IO, the HOF's
+   correctness disappears. Pinning it spares everyone the implicit
+   contract in a comment.
+
+The implicit form stays the default. Don't reach for `! ()` until you
+have a specific reason — most HOFs work better with the row-polymorphic
+behavior. User-named row variables (`! e` with `e` a bound name) stay
+out of v1; if you ever need them, file a use case.
 
 ---
 

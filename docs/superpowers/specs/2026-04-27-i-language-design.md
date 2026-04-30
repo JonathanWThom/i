@@ -13,7 +13,7 @@ A small, compiled, strongly typed language whose surface is as sparse as possibl
 Three guiding values, in priority order:
 
 1. **Aesthetic minimalism.** A program looks like the idea it expresses, not like the language it's written in. Few keywords. Few sigils. Few rules.
-2. **Fits in your head.** The whole semantic core can be learned in an afternoon. New users should be able to read code before they can write it.
+2. **Fits in your head.** The whole semantic core is small enough to hold at once. Reading new code shouldn't require a manual at your elbow. ("Afternoon-fast" if you've used Roc, Elm, or OCaml; longer if Hindley-Milner inference and row-typed effects are new.)
 3. **Ergonomic for real work.** Sparse should *help* you write more code per minute, not turn into a puzzle.
 
 Strong typing and compilation are non-negotiable. Roc-grade safety: pure with tracked effects, no null, no exceptions, total functions, exhaustive matching, distinct newtypes.
@@ -685,6 +685,7 @@ The minimum stdlib v1 must ship:
 - `Std.Maybe a` — `None`, `Some`, `withDefault`, `map`, `andThen`, plus `?` sugar in the language
 - `Std.Result a e` — `Ok`, `Error`, `withDefault`, `map`, `mapError`, `andThen`, plus `?` sugar in the language
 - `Std.IO` — `print`, `println`, `readLine`, `readFile`, `writeFile`. All return `! IO`.
+- `Std.Env` — `args : ! Env -> List String`, `var : String ! Env -> Maybe String`. Read-only access to the program environment; a third effect label `Env`, separate from `IO`.
 - `Std.Ref a` — `make`, `get`, `set` for mutable cells; ops are `! State`
 
 **Traits in the prelude** (auto-imported, not in any one module): `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, `Neg`, `Pow`, `Concat`, `Show`. Operators desugar to these — including `^` to `Pow.pow` (implemented on `Float`) and `++` to `Concat.concat` (implemented on `String` and `List a`). `Show.show : a -> String` is the conversion that `print!` and string-concatenation idioms rely on; every primitive type and most stdlib types have a derived `Show` impl.

@@ -1,8 +1,10 @@
 # i
 
 A small, statically typed, compiled-ish language. The surface is as sparse as
-I could make it without giving up safety. Think Roc-grade safety in a syntax
-pared down to four operators.
+I could make it without giving up safety — Roc-grade type and effect safety,
+with the structural surface stripped down to a handful of operators. (Four of
+them carry the binding structure: `:`, `=`, `->`, `.`. Arithmetic, `!`, `?`,
+and the rest sit on top.)
 
 ```i
 type Point
@@ -24,8 +26,10 @@ the end, not a toy. Priorities, in order:
 
 1. **Aesthetic minimalism.** The program on screen should look like the idea
    you have in your head.
-2. **Fits in your head.** You should be able to learn the whole core in an
-   afternoon.
+2. **Fits in your head.** Small enough that the whole core stays in working
+   memory once you've used it for a while. (Not "afternoon-fast" if you've
+   never seen ML-style inference or row-typed effects — that's a longer
+   ramp.)
 3. **Ergonomic.** Sparse to help, not to puzzle.
 
 ## Status

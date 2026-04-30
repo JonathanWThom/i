@@ -297,6 +297,57 @@ so the two separators don't collide.
 nums.fold 0, acc x -> acc + x       # acc and x are lambda params; 0 and the lambda are call args
 ```
 
+### Where a lambda body ends
+
+`->` is greedy on the right. The body extends until something else
+in the *enclosing* construct claims the next token. The terminators are:
+
+- a newline that returns to or below the indentation of the binding the
+  lambda lives inside,
+- a `,` at the enclosing call's argument depth,
+- a `)` or `]` at the enclosing depth,
+- the next pattern arm in an indented `match` block,
+- end of input.
+
+That's why `nums.fold 0, acc x -> acc + x` parses cleanly: the `,`
+belongs to the outer call, not the lambda. To extend a body across
+multiple lines, use an indented block:
+
+```i
+result =
+    xs.fold initial, acc x ->
+        cleaned = clean x
+        acc.append cleaned
+```
+
+### Method chaining
+
+`.` always binds to the immediately preceding *atom* — an identifier, a
+paren group, a literal, a list literal. It doesn't reach back across a
+call's arguments. So:
+
+```i
+nums.map double                # OK
+nums.map double.filter pred    # parses as nums.map (double.filter pred)
+(nums.map double).filter pred  # chain on a call result needs parens
+```
+
+The price is one paren pair per chain link. The reading rule pays for
+itself: every `.` operates on the thing immediately to its left, and
+that's it.
+
+Long chains formatted across lines line up at `.`:
+
+```i
+nums
+    .map double
+    .filter positive
+    .fold 0, acc x -> acc + x
+```
+
+Layout is convention; the parser only cares about the indentation of
+the enclosing binding.
+
 ### Construction
 
 `Type(field = val, ...)` constructs an instance of `Type` from keyword
@@ -575,8 +626,25 @@ rows by hand.
 
 ### v1 effects
 
-`IO` (print, readLine, file ops) and `State` (`Std.Ref` operations). No
-others in v1.
+`IO` (print, readLine, file ops), `State` (`Std.Ref` operations), and
+`Env` (`Std.Env.args`, `Std.Env.var`). No others in v1.
+
+### Explicit-pure callback
+
+`! ()` is the empty effect row. Written as a callback's row, it pins
+the callback as pure — no IO, no state, nothing. The implicit form
+(no annotation) is effect-polymorphic; this is the one explicit
+spelling available in v1.
+
+```i
+trait Show a
+    show : (a -> String ! ())
+```
+
+Use it for trait methods that have to stay pure to make sense, and for
+HOFs whose semantics depend on the callback being pure (a hash-keyed
+cache, an idempotent retry). User-named row variables are out of v1;
+see [effects.md § 7](effects.md).
 
 ---
 
@@ -709,6 +777,37 @@ are called paren-free like any other function.
 
 `Show.show : a -> String` is the conversion used by `print!` and string
 concatenation idioms (see [stdlib.md § `Show`](stdlib.md)).
+
+### Precedence and associativity
+
+Loose to tight. Operators on the same row have equal precedence.
+
+| Rank | Operators                         | Associativity   |
+|------|-----------------------------------|-----------------|
+| 1    | `->` (lambda body)                | right; greedy   |
+| 2    | `or`                              | function — paren-free call |
+| 3    | `and`                             | function — paren-free call |
+| 4    | `not`                             | function — paren-free call |
+| 5    | `==`, `/=`, `<`, `<=`, `>`, `>=`  | non-associative |
+| 6    | `++`                              | right           |
+| 7    | binary `+`, `-`                   | left            |
+| 8    | `*`, `/`                          | left            |
+| 9    | `^`                               | right           |
+| 10   | unary `-`                         | prefix          |
+| 11   | function call (juxtaposition)     | left            |
+| 12   | `.`, postfix `?`, postfix `!`     | left            |
+| 13   | atoms — literals, identifiers, `()` | —             |
+
+A few consequences:
+
+- Comparisons don't chain. `a < b < c` is a parse error, not a
+  conjunction.
+- Arithmetic precedence is the standard one: `a + b * c` is
+  `a + (b * c)`.
+- Lambda `->` is the lowest-precedence thing in expression position, so
+  the body extends as far right as possible until something else in the
+  enclosing construct ends it (see § 5 *Where a lambda body ends*).
+- `.` is at the very top, so `p.x + 1` is `(p.x) + 1`.
 
 ---
 

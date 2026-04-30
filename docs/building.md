@@ -76,10 +76,10 @@ i run examples/01-hello.i
 type-check, lower, evaluate — and prints whatever the program prints. Exit
 code is `0` on clean run, `1` on a type error, `2` on a runtime error.
 
-Arguments after `--` are reserved for the program. v1 does not yet expose
-a stdlib module for reading them; the slot is held for a future
-`Std.Env` (see [limitations.md](limitations.md)). Until that lands, `--`
-is parsed but inert.
+Arguments after `--` are passed to the program and surface through
+[`Std.Env.args`](stdlib.md). The CLI strips them before parsing its own
+flags, so `--` is the boundary: anything after it is the program's, not
+the `i` runner's.
 
 ### `i check <file>`
 
@@ -195,6 +195,24 @@ error[effect-leak]: function `double` is declared pure, but calls `print!`
                      ^^^^^^^^^^^^^^^^
 note: remove the `!` call, or annotate `double` with `! IO`
 ```
+
+`?` mismatches are the third common shape. `?` works on both `Result`
+and `Maybe`, but the inner expression's shape has to match the
+enclosing function's return type. Mixing them produces:
+
+```
+error[question-mismatch]: cannot use `?` on a `Result` inside a function returning `Maybe`
+   at src/Main.i:10
+       Some (parseInt s?)
+                       ^
+note: enclosing function returns `Maybe Int`, but `parseInt s : Result Int ParseError`
+hint: change the function to return `Result _ ParseError`, or `match` on
+      the `Result` and convert the `Error` arm to `None` explicitly.
+```
+
+The compiler refuses to silently drop the error, since that's the
+specific failure mode `?` exists to make visible. The fix is either to
+adapt the value at the call site or to handle both arms explicitly.
 
 Diagnostics are stable, scriptable text. No color codes when stdout
 isn't a TTY, no progress bars, no spinners.

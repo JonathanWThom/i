@@ -208,6 +208,29 @@ The compiler checks every `match` for exhaustiveness. Forget to handle
 `Rect` and the program won't build; the error names the case you missed.
 No fallthrough, and no default needed when you've covered the cases by name.
 
+`area` here is a free function. The same idea written as a method on
+`Shape` looks like this:
+
+```i
+type Shape
+    Circle
+        radius : Float
+    Rect
+        width : Float
+        height : Float
+
+    area = ->
+        self match
+            Circle r    -> 3.14159 * r^2
+            Rect w, h   -> w * h
+```
+
+Inside the `type` block, `area =` binds `Shape.area`, and the implicit
+`self` is the matched shape. You'd then call `s.area` instead of
+`area s`. Pick the form that reads better — most code uses methods when
+the function is logically a piece of the type's interface, and free
+functions when it's a derived calculation.
+
 For all the pattern kinds (literals, lists, nested), see [patterns.md](patterns.md).
 
 ---
@@ -399,7 +422,10 @@ For the full module rules, see [modules.md](modules.md).
 
 ## 10. Where to go next
 
-You've now seen every concept in the language. Pick the depth you want:
+That's most of the language on one page. The reference docs go deeper on
+the corners I skipped — operator precedence, exhaustiveness rules, what
+the type checker actually does, how the effect system handles
+higher-order functions, and the rest. Pick the depth you want:
 
 - [Syntax reference](syntax.md) — every form, every operator, look-up style
 - [Type system](types.md) — records, sums, generics, traits, totality
