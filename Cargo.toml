@@ -1,7 +1,7 @@
 [package]
 name = "i-lang"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "An exercise in sparse-by-default language design"
 license = "MIT"
 repository = "https://github.com/jonathanthom/i-lang"
