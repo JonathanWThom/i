@@ -149,9 +149,9 @@ expect the recipient to have `i` installed."
 
 ## 5. Errors
 
-Type errors are the messages you'll see most often. They're designed to
-read top-down: what went wrong, where it went wrong, the offending span,
-and a note explaining *why* the checker rejected it.
+Type errors are the messages you'll see most often. The shape is
+top-down: what went wrong, where, the offending span, and a note that
+explains *why* the checker rejected it.
 
 Say someone adapts `examples/04-list-map.i` and forgets that the list
 holds strings instead of ints:

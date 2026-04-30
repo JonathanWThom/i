@@ -20,6 +20,7 @@ they're the contract.
 |---|---|---|---|
 | 1 | **Documentation** | Project skeleton + complete end-state user docs | Every concept in the spec has a user-facing doc; every example file is referenced |
 | 1.5 | **Spec revisions from external review** | Spec + docs updated for: space-separated lambda params, effect-polymorphic HOFs, `?` on Maybe, opaque type exports, tuples in v1, expanded stdlib (List helpers + Map + Set) | All docs, examples, and the spec consistently reflect the revised design |
+| 1.6 | **Grammar and precedence** | Spec + docs updated for: precedence/associativity table, lambda-body termination rule, method chaining rule, `self` in sum-type method blocks, explicit-pure callback `(a -> b ! ())`, `Std.Env` (third effect label), corecursive workaround, softer marketing claims | Every parser-relevant disambiguation has a written rule; every doc reflects them |
 | 2 | **Lexer + parser** | Tokenizer with layout, recursive-descent parser, AST, pretty-printer | Every `examples/*.i` parses; round-trip parse → print → parse is identity |
 | 3 | **Name resolution** | Module loader, `expose`/`use`, scope, implicit `Type.` and `self` | Every `examples/*.i` resolves all names; reasonable errors on unresolved names |
 | 4 | **Type checker** | Hindley-Milner inference, effect rows, trait constraints, exhaustiveness, totality | Every `examples/*.i` type-checks; `tests/negative/*.i` fail with expected errors |
@@ -70,7 +71,7 @@ of those are committed yet.
 
 ## Currently active plan
 
-→ [Plan 1.5: Spec revisions from external review](2026-04-29-i-language-spec-revisions.md)
+→ [Plan 1.6: Grammar and precedence](2026-04-29-i-language-grammar-and-precedence.md)
 
 ## Out of scope for this roadmap
 
