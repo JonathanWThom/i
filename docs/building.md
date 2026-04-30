@@ -216,6 +216,7 @@ i run examples/04-list-map.i     # list pipelines
 i run examples/05-effects.i      # IO effect propagation
 i run examples/06-tree.i         # recursive types
 i run examples/07-result.i       # Result and the `?` operator
+i run examples/09-effect-map.i   # effect-polymorphic map (pure + ! IO)
 ```
 
 The two-file modules example runs against the project root rather than a

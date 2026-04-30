@@ -1,7 +1,7 @@
 module Main
     expose main
 
-use Std.IO (print, println)
+use Std.IO (println)
 
 # Pure callback — `map` stays pure.
 double = n -> n * 2
