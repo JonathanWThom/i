@@ -19,6 +19,7 @@ they're the contract.
 | # | Plan | Deliverable | Acceptance |
 |---|---|---|---|
 | 1 | **Documentation** | Project skeleton + complete end-state user docs | Every concept in the spec has a user-facing doc; every example file is referenced |
+| 1.5 | **Spec revisions from external review** | Spec + docs updated for: space-separated lambda params, effect-polymorphic HOFs, `?` on Maybe, opaque type exports, tuples in v1, expanded stdlib (List helpers + Map + Set) | All docs, examples, and the spec consistently reflect the revised design |
 | 2 | **Lexer + parser** | Tokenizer with layout, recursive-descent parser, AST, pretty-printer | Every `examples/*.i` parses; round-trip parse → print → parse is identity |
 | 3 | **Name resolution** | Module loader, `expose`/`use`, scope, implicit `Type.` and `self` | Every `examples/*.i` resolves all names; reasonable errors on unresolved names |
 | 4 | **Type checker** | Hindley-Milner inference, effect rows, trait constraints, exhaustiveness, totality | Every `examples/*.i` type-checks; `tests/negative/*.i` fail with expected errors |
@@ -49,7 +50,7 @@ package management, additional stdlib. None of those are committed yet.
 
 ## Currently active plan
 
-→ [Plan 1: Documentation](2026-04-27-i-language-documentation.md)
+→ [Plan 1.5: Spec revisions from external review](2026-04-29-i-language-spec-revisions.md)
 
 ## Out of scope for this roadmap
 
