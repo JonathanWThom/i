@@ -1,4 +1,5 @@
 mod cursor;
+mod scan;
 
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
@@ -10,27 +11,20 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     let mut out = Vec::new();
 
     loop {
-        // Skip whitespace and line comments. Newlines are eaten as trivia
-        // here too; Task 9 replaces this with proper layout-token emission.
-        loop {
-            match cur.peek() {
-                Some(b' ') | Some(b'\t') | Some(b'\n') => {
-                    cur.bump();
-                }
-                Some(b'#') => {
-                    while let Some(c) = cur.peek() {
-                        if c == b'\n' {
-                            break;
-                        }
-                        cur.bump();
-                    }
-                }
-                _ => break,
-            }
-        }
+        skip_trivia(&mut cur);
         let start = cur.pos();
         let kind = match cur.peek() {
             None => break,
+
+            // Multi-character scanners
+            Some(b'"') => scan::scan_string(&mut cur, start)?,
+            Some(c) if c.is_ascii_digit() => scan::scan_number(&mut cur, src, start)?,
+            Some(b'_') => scan::scan_underscore(&mut cur, src, start)?,
+            Some(c) if c.is_ascii_alphabetic() => {
+                scan::scan_ident_or_keyword(&mut cur, src, start)?
+            }
+
+            // Single- and two-char punctuation, inline.
             Some(b'(') => {
                 cur.bump();
                 TokenKind::LParen
@@ -127,175 +121,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
                     TokenKind::Dot
                 }
             }
-            Some(b'"') => {
-                cur.bump();
-                let mut s = String::new();
-                loop {
-                    match cur.bump() {
-                        None => {
-                            return Err(Error {
-                                span: Span::new(start, cur.pos()),
-                                kind: ErrorKind::UnterminatedString,
-                            });
-                        }
-                        Some(b'"') => break,
-                        Some(b'\n') => {
-                            return Err(Error {
-                                span: Span::new(start, cur.pos()),
-                                kind: ErrorKind::UnterminatedString,
-                            });
-                        }
-                        Some(b'\\') => {
-                            let esc_start = cur.pos() - 1;
-                            let c = match cur.bump() {
-                                Some(c) => c,
-                                None => {
-                                    return Err(Error {
-                                        span: Span::new(start, cur.pos()),
-                                        kind: ErrorKind::UnterminatedString,
-                                    });
-                                }
-                            };
-                            let unescaped = match c {
-                                b'n' => '\n',
-                                b't' => '\t',
-                                b'r' => '\r',
-                                b'\\' => '\\',
-                                b'"' => '"',
-                                b'0' => '\0',
-                                other => {
-                                    return Err(Error {
-                                        span: Span::new(esc_start, cur.pos()),
-                                        kind: ErrorKind::InvalidEscape(other as char),
-                                    });
-                                }
-                            };
-                            s.push(unescaped);
-                        }
-                        Some(c) => s.push(c as char),
-                    }
-                }
-                TokenKind::StringLit(s)
-            }
-            Some(c) if c.is_ascii_digit() => {
-                while let Some(c) = cur.peek() {
-                    if c.is_ascii_digit() {
-                        cur.bump();
-                    } else {
-                        break;
-                    }
-                }
-                // Float? Only if `.` is followed by a digit.
-                let is_float = cur.peek() == Some(b'.')
-                    && cur.peek_at(1).map_or(false, |c| c.is_ascii_digit());
-                if is_float {
-                    cur.bump(); // consume '.'
-                    while let Some(c) = cur.peek() {
-                        if c.is_ascii_digit() {
-                            cur.bump();
-                        } else {
-                            break;
-                        }
-                    }
-                    let text = &src[start as usize..cur.pos() as usize];
-                    let n: f64 = text.parse().map_err(|_| Error {
-                        span: Span::new(start, cur.pos()),
-                        kind: ErrorKind::InvalidNumber(text.to_string()),
-                    })?;
-                    TokenKind::FloatLit(n)
-                } else {
-                    let text = &src[start as usize..cur.pos() as usize];
-                    let n: i64 = text.parse().map_err(|_| Error {
-                        span: Span::new(start, cur.pos()),
-                        kind: ErrorKind::InvalidNumber(text.to_string()),
-                    })?;
-                    TokenKind::IntLit(n)
-                }
-            }
-            Some(b'_') => {
-                cur.bump();
-                // If the next char would continue an identifier, this is an
-                // underscore-in-identifier error. Otherwise it's the bare
-                // wildcard.
-                if cur
-                    .peek()
-                    .map_or(false, |c| c.is_ascii_alphanumeric() || c == b'_')
-                {
-                    while let Some(c) = cur.peek() {
-                        if c.is_ascii_alphanumeric() || c == b'_' {
-                            cur.bump();
-                        } else {
-                            break;
-                        }
-                    }
-                    let name =
-                        std::str::from_utf8(&src.as_bytes()[start as usize..cur.pos() as usize])
-                            .unwrap()
-                            .to_string();
-                    return Err(Error {
-                        span: Span::new(start, cur.pos()),
-                        kind: ErrorKind::UnderscoreInIdentifier {
-                            suggestion: to_camel_case(&name),
-                            name,
-                        },
-                    });
-                }
-                TokenKind::Underscore
-            }
-            Some(c) if c.is_ascii_alphabetic() => {
-                let is_upper = c.is_ascii_uppercase();
-                while let Some(c) = cur.peek() {
-                    if c.is_ascii_alphanumeric() {
-                        cur.bump();
-                    } else if c == b'_' {
-                        // Identifier with underscore in the middle: scan the
-                        // whole would-be name to give a useful error.
-                        while let Some(c) = cur.peek() {
-                            if c.is_ascii_alphanumeric() || c == b'_' {
-                                cur.bump();
-                            } else {
-                                break;
-                            }
-                        }
-                        let name = std::str::from_utf8(
-                            &src.as_bytes()[start as usize..cur.pos() as usize],
-                        )
-                        .unwrap()
-                        .to_string();
-                        return Err(Error {
-                            span: Span::new(start, cur.pos()),
-                            kind: ErrorKind::UnderscoreInIdentifier {
-                                suggestion: to_camel_case(&name),
-                                name,
-                            },
-                        });
-                    } else {
-                        break;
-                    }
-                }
-                let text = std::str::from_utf8(&src.as_bytes()[start as usize..cur.pos() as usize])
-                    .unwrap()
-                    .to_string();
-                if is_upper {
-                    TokenKind::UpperIdent(text)
-                } else {
-                    match text.as_str() {
-                        "type" => TokenKind::KwType,
-                        "match" => TokenKind::KwMatch,
-                        "module" => TokenKind::KwModule,
-                        "expose" => TokenKind::KwExpose,
-                        "use" => TokenKind::KwUse,
-                        "as" => TokenKind::KwAs,
-                        "trait" => TokenKind::KwTrait,
-                        "impl" => TokenKind::KwImpl,
-                        "and" => TokenKind::KwAnd,
-                        "or" => TokenKind::KwOr,
-                        "not" => TokenKind::KwNot,
-                        "xor" => TokenKind::KwXor,
-                        _ => TokenKind::LowerIdent(text),
-                    }
-                }
-            }
+
             Some(c) => {
                 return Err(Error {
                     span: Span::new(start, start + 1),
@@ -315,19 +141,23 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     Ok(out)
 }
 
-fn to_camel_case(snake: &str) -> String {
-    let mut out = String::with_capacity(snake.len());
-    let mut upper_next = false;
-    for c in snake.chars() {
-        if c == '_' {
-            upper_next = true;
-        } else if upper_next {
-            out.extend(c.to_uppercase());
-            upper_next = false;
-        } else {
-            out.push(c);
+// Whitespace and line comments. Newlines are eaten as trivia here too;
+// Task 9 replaces the newline arm with proper layout-token emission.
+fn skip_trivia(cur: &mut Cursor) {
+    loop {
+        match cur.peek() {
+            Some(b' ') | Some(b'\t') | Some(b'\n') => {
+                cur.bump();
+            }
+            Some(b'#') => {
+                while let Some(c) = cur.peek() {
+                    if c == b'\n' {
+                        break;
+                    }
+                    cur.bump();
+                }
+            }
+            _ => break,
         }
     }
-    out
 }
-
