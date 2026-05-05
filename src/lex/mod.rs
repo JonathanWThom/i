@@ -10,9 +10,23 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     let mut out = Vec::new();
 
     loop {
-        // Skip horizontal whitespace within a line.
-        while let Some(b' ') = cur.peek() {
-            cur.bump();
+        // Skip whitespace and line comments. Newlines are eaten as trivia
+        // here too; Task 9 replaces this with proper layout-token emission.
+        loop {
+            match cur.peek() {
+                Some(b' ') | Some(b'\t') | Some(b'\n') => {
+                    cur.bump();
+                }
+                Some(b'#') => {
+                    while let Some(c) = cur.peek() {
+                        if c == b'\n' {
+                            break;
+                        }
+                        cur.bump();
+                    }
+                }
+                _ => break,
+            }
         }
         let start = cur.pos();
         let kind = match cur.peek() {
