@@ -113,6 +113,56 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
                     TokenKind::Dot
                 }
             }
+            Some(b'"') => {
+                cur.bump();
+                let mut s = String::new();
+                loop {
+                    match cur.bump() {
+                        None => {
+                            return Err(Error {
+                                span: Span::new(start, cur.pos()),
+                                kind: ErrorKind::UnterminatedString,
+                            });
+                        }
+                        Some(b'"') => break,
+                        Some(b'\n') => {
+                            return Err(Error {
+                                span: Span::new(start, cur.pos()),
+                                kind: ErrorKind::UnterminatedString,
+                            });
+                        }
+                        Some(b'\\') => {
+                            let esc_start = cur.pos() - 1;
+                            let c = match cur.bump() {
+                                Some(c) => c,
+                                None => {
+                                    return Err(Error {
+                                        span: Span::new(start, cur.pos()),
+                                        kind: ErrorKind::UnterminatedString,
+                                    });
+                                }
+                            };
+                            let unescaped = match c {
+                                b'n' => '\n',
+                                b't' => '\t',
+                                b'r' => '\r',
+                                b'\\' => '\\',
+                                b'"' => '"',
+                                b'0' => '\0',
+                                other => {
+                                    return Err(Error {
+                                        span: Span::new(esc_start, cur.pos()),
+                                        kind: ErrorKind::InvalidEscape(other as char),
+                                    });
+                                }
+                            };
+                            s.push(unescaped);
+                        }
+                        Some(c) => s.push(c as char),
+                    }
+                }
+                TokenKind::StringLit(s)
+            }
             Some(c) if c.is_ascii_digit() => {
                 while let Some(c) = cur.peek() {
                     if c.is_ascii_digit() {

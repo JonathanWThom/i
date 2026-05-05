@@ -11,4 +11,6 @@ pub enum ErrorKind {
     UnexpectedChar(char),
     UnderscoreInIdentifier { name: String, suggestion: String },
     InvalidNumber(String),
+    UnterminatedString,
+    InvalidEscape(char),
 }
