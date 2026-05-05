@@ -113,6 +113,41 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
                     TokenKind::Dot
                 }
             }
+            Some(c) if c.is_ascii_digit() => {
+                while let Some(c) = cur.peek() {
+                    if c.is_ascii_digit() {
+                        cur.bump();
+                    } else {
+                        break;
+                    }
+                }
+                // Float? Only if `.` is followed by a digit.
+                let is_float = cur.peek() == Some(b'.')
+                    && cur.peek_at(1).map_or(false, |c| c.is_ascii_digit());
+                if is_float {
+                    cur.bump(); // consume '.'
+                    while let Some(c) = cur.peek() {
+                        if c.is_ascii_digit() {
+                            cur.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                    let text = &src[start as usize..cur.pos() as usize];
+                    let n: f64 = text.parse().map_err(|_| Error {
+                        span: Span::new(start, cur.pos()),
+                        kind: ErrorKind::InvalidNumber(text.to_string()),
+                    })?;
+                    TokenKind::FloatLit(n)
+                } else {
+                    let text = &src[start as usize..cur.pos() as usize];
+                    let n: i64 = text.parse().map_err(|_| Error {
+                        span: Span::new(start, cur.pos()),
+                        kind: ErrorKind::InvalidNumber(text.to_string()),
+                    })?;
+                    TokenKind::IntLit(n)
+                }
+            }
             Some(b'_') => {
                 cur.bump();
                 // If the next char would continue an identifier, this is an
