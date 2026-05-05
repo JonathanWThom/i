@@ -8,5 +8,5 @@ pub struct Error {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
-    // populated by later tasks
+    UnexpectedChar(char),
 }
