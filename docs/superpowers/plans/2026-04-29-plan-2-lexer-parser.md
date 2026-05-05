@@ -890,6 +890,72 @@ git commit -m "Plan 2 Task 8: skip line comments"
 
 ---
 
+#### Task 8.5: Extract token scanners (refactor — no behaviour change)
+
+**Files:**
+- Create: `src/lex/scan.rs`
+- Modify: `src/lex/mod.rs`
+
+By this point the inline match in `lex()` is the bulk of the file and the
+character-class branches obscure the loop's structure. Pull each class into
+a pure function so `lex()` becomes a one-screen dispatcher. No tests change;
+the full existing test suite is the regression check.
+
+- [ ] **Step 1: Create `src/lex/scan.rs`**
+
+Move these functions out of `lex()`'s match into `scan.rs`, each taking
+`&mut Cursor`, the source `&str`, and the start position, and returning
+`Result<TokenKind, Error>`:
+
+- `scan_string`     — handles `"` … `"` plus escapes
+- `scan_number`     — handles digit run with optional float tail
+- `scan_ident_or_keyword` — handles ASCII letter starts, keywords, no underscores
+- `scan_underscore` — handles bare `_` vs underscore-in-identifier error
+
+Punctuation stays inline in `lex()`: each branch is one or two lines, and
+inlining keeps the dispatch readable.
+
+- [ ] **Step 2: Reduce `lex()` to a dispatch loop**
+
+```rust
+pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
+    let mut cur = Cursor::new(src);
+    let mut out = Vec::new();
+    loop {
+        while let Some(b' ') = cur.peek() { cur.bump(); }
+        let start = cur.pos();
+        let kind = match cur.peek() {
+            None => break,
+            Some(b'"') => scan::scan_string(&mut cur, start)?,
+            Some(c) if c.is_ascii_digit() => scan::scan_number(&mut cur, src, start)?,
+            Some(b'_') => scan::scan_underscore(&mut cur, src, start)?,
+            Some(c) if c.is_ascii_alphabetic() => scan::scan_ident_or_keyword(&mut cur, src, start)?,
+            // single/multi-char punctuation arms inline as today
+            Some(b'(') => { cur.bump(); TokenKind::LParen }
+            // ... etc
+        };
+        out.push(Token { span: Span::new(start, cur.pos()), kind });
+    }
+    let end = cur.pos();
+    out.push(Token { span: Span::new(end, end), kind: TokenKind::Eof });
+    Ok(out)
+}
+```
+
+- [ ] **Step 3: Run the full test suite**
+
+Run: `cargo test`
+Expected: every prior test still passes; no new tests added.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/lex/scan.rs src/lex/mod.rs
+git commit -m "Plan 2 Task 8.5: extract token scanners (refactor)"
+```
+
+---
+
 #### Task 9: Newlines and line continuation
 
 **Files:**
