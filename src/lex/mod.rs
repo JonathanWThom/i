@@ -1,17 +1,45 @@
 mod cursor;
+mod layout;
 mod scan;
 
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 use crate::token::{Token, TokenKind};
 use cursor::Cursor;
+use layout::Layout;
 
 pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     let mut cur = Cursor::new(src);
     let mut out = Vec::new();
+    let mut layout = Layout::new();
 
     loop {
         skip_trivia(&mut cur);
+
+        // Newline handling. A `\n` either:
+        //   - is suppressed (inside parens or after a continuation operator),
+        //   - or emits a Newline token (collapsing consecutive blanks),
+        // and then we continue scanning the next line.
+        if cur.peek() == Some(b'\n') {
+            let nl_start = cur.pos();
+            cur.bump();
+            if !layout.suppresses_newline() {
+                let last_was_newline = matches!(
+                    out.last().map(|t: &Token| &t.kind),
+                    Some(TokenKind::Newline)
+                );
+                if !last_was_newline && !out.is_empty() {
+                    let kind = TokenKind::Newline;
+                    out.push(Token {
+                        span: Span::new(nl_start, cur.pos()),
+                        kind: kind.clone(),
+                    });
+                    layout.note_emitted(&kind);
+                }
+            }
+            continue;
+        }
+
         let start = cur.pos();
         let kind = match cur.peek() {
             None => break,
@@ -130,7 +158,11 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
             }
         };
         let span = Span::new(start, cur.pos());
-        out.push(Token { span, kind });
+        out.push(Token {
+            span,
+            kind: kind.clone(),
+        });
+        layout.note_emitted(&kind);
     }
 
     let end = cur.pos();
@@ -141,12 +173,13 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     Ok(out)
 }
 
-// Whitespace and line comments. Newlines are eaten as trivia here too;
-// Task 9 replaces the newline arm with proper layout-token emission.
+/// Skips spaces, tabs, and `#` line comments. Newlines are NOT consumed
+/// here — `lex()` handles them so it can decide whether to emit a Newline
+/// token (per `Layout::suppresses_newline`).
 fn skip_trivia(cur: &mut Cursor) {
     loop {
         match cur.peek() {
-            Some(b' ') | Some(b'\t') | Some(b'\n') => {
+            Some(b' ') | Some(b'\t') => {
                 cur.bump();
             }
             Some(b'#') => {

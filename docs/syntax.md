@@ -47,12 +47,24 @@ type Point
 
 ### Newlines
 
-A newline terminates an expression. The exception is when the line ends with
-an operator or an open paren — then the expression continues on the next line.
+A newline terminates an expression. The exception is when the previous token
+*expects more input on the right*: an arithmetic operator (`+`, `-`, `*`, `/`,
+`^`), a comparison (`==`, `/=`, `<`, `<=`, `>`, `>=`), the concat `++`, or a
+`,`. The line also continues inside an unmatched `(...)` or `[...]`.
 
 ```i
 total = a +
     b + c
+```
+
+Binding operators (`:`, `=`, `->`) do *not* continue the line — they often
+introduce an indented block body, which depends on the newline being emitted
+so the block can open.
+
+```i
+main =
+    print! "hi"
+    print! "bye"
 ```
 
 ### Integer literal
