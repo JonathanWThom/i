@@ -46,6 +46,7 @@ pub enum TokenKind {
     Bang,
     Question,
     DotDot,
+    Underscore,
 
     // Arithmetic / comparison / concat (desugar in parser)
     Plus,

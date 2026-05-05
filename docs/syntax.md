@@ -29,6 +29,11 @@ point : Point       # value : Type
 list  : List a      # `a` is a type variable
 ```
 
+Identifiers are ASCII letters and digits only — no underscores. Multi-word
+names use camelCase (`parsePoint`, `firstEven`). The single underscore `_`
+is the wildcard pattern (see § 7), not an identifier character. `_foo` and
+`bar_baz` are lex errors with a suggestion to rewrite in camelCase.
+
 ### Whitespace and indentation
 
 Indentation marks blocks. Increasing indentation opens a block; returning to
