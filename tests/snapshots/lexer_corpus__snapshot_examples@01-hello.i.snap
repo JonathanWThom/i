@@ -1,0 +1,23 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/01-hello.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+LowerIdent "main"      @ 29..33
+Equals                 @ 34..35
+Newline                @ 35..36
+Indent                 @ 40..40
+LowerIdent "print"     @ 40..45
+Bang                   @ 45..46
+StringLit "hello, world" @ 47..61
+Newline                @ 61..62
+Dedent                 @ 62..62
+Eof                    @ 62..62

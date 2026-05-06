@@ -1,0 +1,68 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/08-modules-lib.i
+---
+KwModule               @ 0..6
+UpperIdent "Geometry"  @ 7..15
+Newline                @ 15..16
+Indent                 @ 20..20
+KwExpose               @ 20..26
+UpperIdent "Point"     @ 27..32
+LParen                 @ 32..33
+DotDot                 @ 33..35
+RParen                 @ 35..36
+Comma                  @ 36..37
+LowerIdent "distance"  @ 38..46
+Newline                @ 46..47
+Dedent                 @ 48..48
+KwType                 @ 48..52
+UpperIdent "Point"     @ 53..58
+Newline                @ 58..59
+Indent                 @ 63..63
+LowerIdent "x"         @ 63..64
+Colon                  @ 65..66
+UpperIdent "Float"     @ 67..72
+Newline                @ 72..73
+LowerIdent "y"         @ 77..78
+Colon                  @ 79..80
+UpperIdent "Float"     @ 81..86
+Newline                @ 86..87
+Dedent                 @ 88..88
+LowerIdent "distance"  @ 88..96
+Equals                 @ 97..98
+LowerIdent "a"         @ 99..100
+LowerIdent "b"         @ 101..102
+Arrow                  @ 103..105
+Newline                @ 105..106
+Indent                 @ 110..110
+LParen                 @ 110..111
+LParen                 @ 111..112
+LowerIdent "a"         @ 112..113
+Dot                    @ 113..114
+LowerIdent "x"         @ 114..115
+Minus                  @ 116..117
+LowerIdent "b"         @ 118..119
+Dot                    @ 119..120
+LowerIdent "x"         @ 120..121
+RParen                 @ 121..122
+Caret                  @ 122..123
+IntLit 2               @ 123..124
+Plus                   @ 125..126
+LParen                 @ 127..128
+LowerIdent "a"         @ 128..129
+Dot                    @ 129..130
+LowerIdent "y"         @ 130..131
+Minus                  @ 132..133
+LowerIdent "b"         @ 134..135
+Dot                    @ 135..136
+LowerIdent "y"         @ 136..137
+RParen                 @ 137..138
+Caret                  @ 138..139
+IntLit 2               @ 139..140
+RParen                 @ 140..141
+Caret                  @ 141..142
+FloatLit 0.5           @ 142..145
+Newline                @ 145..146
+Dedent                 @ 146..146
+Eof                    @ 146..146

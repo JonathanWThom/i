@@ -1,0 +1,82 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/09-effect-map.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwUse                  @ 29..32
+UpperIdent "Std"       @ 33..36
+Dot                    @ 36..37
+UpperIdent "IO"        @ 37..39
+LParen                 @ 40..41
+LowerIdent "println"   @ 41..48
+RParen                 @ 48..49
+Newline                @ 49..50
+LowerIdent "double"    @ 89..95
+Equals                 @ 96..97
+LowerIdent "n"         @ 98..99
+Arrow                  @ 100..102
+LowerIdent "n"         @ 103..104
+Star                   @ 105..106
+IntLit 2               @ 107..108
+Newline                @ 108..109
+LowerIdent "doubled"   @ 110..117
+Equals                 @ 118..119
+LBracket               @ 120..121
+IntLit 1               @ 121..122
+Comma                  @ 122..123
+IntLit 2               @ 124..125
+Comma                  @ 125..126
+IntLit 3               @ 127..128
+RBracket               @ 128..129
+Dot                    @ 129..130
+LowerIdent "map"       @ 130..133
+LowerIdent "double"    @ 134..140
+Newline                @ 140..141
+LowerIdent "shout"     @ 188..193
+Equals                 @ 194..195
+LowerIdent "n"         @ 196..197
+Arrow                  @ 198..200
+Newline                @ 200..201
+Indent                 @ 205..205
+LowerIdent "println"   @ 205..212
+Bang                   @ 212..213
+StringLit "saw "       @ 214..220
+PlusPlus               @ 221..223
+LowerIdent "show"      @ 224..228
+LowerIdent "n"         @ 229..230
+Newline                @ 230..231
+LowerIdent "n"         @ 235..236
+Newline                @ 236..237
+Dedent                 @ 238..238
+LowerIdent "main"      @ 238..242
+Equals                 @ 243..244
+Newline                @ 244..245
+Indent                 @ 249..249
+LBracket               @ 249..250
+IntLit 4               @ 250..251
+Comma                  @ 251..252
+IntLit 5               @ 253..254
+Comma                  @ 254..255
+IntLit 6               @ 256..257
+RBracket               @ 257..258
+Dot                    @ 258..259
+LowerIdent "map"       @ 259..262
+LowerIdent "shout"     @ 263..268
+Newline                @ 320..321
+LowerIdent "println"   @ 325..332
+Bang                   @ 332..333
+StringLit "doubled: "  @ 334..345
+PlusPlus               @ 346..348
+LowerIdent "show"      @ 349..353
+LowerIdent "doubled"   @ 354..361
+Newline                @ 361..362
+Dedent                 @ 362..362
+Eof                    @ 362..362

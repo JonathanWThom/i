@@ -1,0 +1,73 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/08-modules-app.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwUse                  @ 29..32
+UpperIdent "Geometry"  @ 33..41
+LParen                 @ 42..43
+UpperIdent "Point"     @ 43..48
+Comma                  @ 48..49
+LowerIdent "distance"  @ 50..58
+RParen                 @ 58..59
+Newline                @ 59..60
+KwUse                  @ 60..63
+UpperIdent "Std"       @ 64..67
+Dot                    @ 67..68
+UpperIdent "IO"        @ 68..70
+LParen                 @ 71..72
+LowerIdent "print"     @ 72..77
+RParen                 @ 77..78
+Newline                @ 78..79
+LowerIdent "main"      @ 80..84
+Equals                 @ 85..86
+Newline                @ 86..87
+Indent                 @ 91..91
+LowerIdent "p1"        @ 91..93
+Equals                 @ 94..95
+UpperIdent "Point"     @ 96..101
+LParen                 @ 101..102
+LowerIdent "x"         @ 102..103
+Equals                 @ 104..105
+IntLit 0               @ 106..107
+Comma                  @ 107..108
+LowerIdent "y"         @ 109..110
+Equals                 @ 111..112
+IntLit 0               @ 113..114
+RParen                 @ 114..115
+Newline                @ 115..116
+LowerIdent "p2"        @ 120..122
+Equals                 @ 123..124
+UpperIdent "Point"     @ 125..130
+LParen                 @ 130..131
+LowerIdent "x"         @ 131..132
+Equals                 @ 133..134
+IntLit 3               @ 135..136
+Comma                  @ 136..137
+LowerIdent "y"         @ 138..139
+Equals                 @ 140..141
+IntLit 4               @ 142..143
+RParen                 @ 143..144
+Newline                @ 144..145
+LowerIdent "print"     @ 149..154
+Bang                   @ 154..155
+StringLit "distance: " @ 156..168
+PlusPlus               @ 169..171
+LowerIdent "show"      @ 172..176
+LParen                 @ 177..178
+LowerIdent "distance"  @ 178..186
+LowerIdent "p1"        @ 187..189
+Comma                  @ 189..190
+LowerIdent "p2"        @ 191..193
+RParen                 @ 193..194
+Newline                @ 194..195
+Dedent                 @ 195..195
+Eof                    @ 195..195

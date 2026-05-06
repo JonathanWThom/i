@@ -1,0 +1,62 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/05-effects.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 51..51
+LowerIdent "double"    @ 51..57
+Equals                 @ 58..59
+LowerIdent "n"         @ 60..61
+Arrow                  @ 62..64
+LowerIdent "n"         @ 65..66
+Star                   @ 67..68
+IntLit 2               @ 69..70
+Newline                @ 70..71
+LowerIdent "quadruple" @ 94..103
+Equals                 @ 104..105
+LowerIdent "n"         @ 106..107
+Arrow                  @ 108..110
+LowerIdent "double"    @ 111..117
+LParen                 @ 118..119
+LowerIdent "double"    @ 119..125
+LowerIdent "n"         @ 126..127
+RParen                 @ 127..128
+Newline                @ 128..129
+LowerIdent "shout"     @ 163..168
+Equals                 @ 169..170
+LowerIdent "n"         @ 171..172
+Arrow                  @ 173..175
+Newline                @ 175..176
+Indent                 @ 180..180
+LowerIdent "print"     @ 180..185
+Bang                   @ 185..186
+StringLit "the number is " @ 187..203
+PlusPlus               @ 204..206
+LowerIdent "show"      @ 207..211
+LowerIdent "n"         @ 212..213
+Newline                @ 213..214
+Dedent                 @ 245..245
+LowerIdent "main"      @ 245..249
+Equals                 @ 250..251
+Newline                @ 251..252
+Indent                 @ 256..256
+LowerIdent "print"     @ 256..261
+Bang                   @ 261..262
+StringLit "starting"   @ 263..273
+Newline                @ 273..274
+LowerIdent "shout"     @ 278..283
+IntLit 21              @ 284..286
+Newline                @ 286..287
+LowerIdent "print"     @ 291..296
+Bang                   @ 296..297
+StringLit "done"       @ 298..304
+Newline                @ 304..305
+Dedent                 @ 305..305
+Eof                    @ 305..305

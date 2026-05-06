@@ -1,0 +1,108 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/07-result.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwUse                  @ 29..32
+UpperIdent "Std"       @ 33..36
+Dot                    @ 36..37
+UpperIdent "Float"     @ 37..42
+KwAs                   @ 43..45
+UpperIdent "F"         @ 46..47
+Newline                @ 47..48
+KwUse                  @ 48..51
+UpperIdent "Std"       @ 52..55
+Dot                    @ 55..56
+UpperIdent "IO"        @ 56..58
+LParen                 @ 59..60
+LowerIdent "print"     @ 60..65
+RParen                 @ 65..66
+Newline                @ 66..67
+KwType                 @ 68..72
+UpperIdent "ParseError" @ 73..83
+Newline                @ 83..84
+Indent                 @ 88..88
+UpperIdent "BadNumber" @ 88..97
+Newline                @ 97..98
+UpperIdent "OutOfRange" @ 102..112
+Newline                @ 112..113
+Dedent                 @ 114..114
+LowerIdent "bounded"   @ 114..121
+Equals                 @ 122..123
+LowerIdent "s"         @ 124..125
+LowerIdent "lo"        @ 126..128
+LowerIdent "hi"        @ 129..131
+Arrow                  @ 132..134
+Newline                @ 134..135
+Indent                 @ 139..139
+LowerIdent "n"         @ 139..140
+Equals                 @ 141..142
+UpperIdent "F"         @ 143..144
+Dot                    @ 144..145
+LowerIdent "parse"     @ 145..150
+LowerIdent "s"         @ 151..152
+Question               @ 152..153
+Newline                @ 153..154
+LowerIdent "n"         @ 158..159
+Lt                     @ 160..161
+LowerIdent "lo"        @ 162..164
+KwOr                   @ 165..167
+LowerIdent "n"         @ 168..169
+Gt                     @ 170..171
+LowerIdent "hi"        @ 172..174
+KwMatch                @ 175..180
+Newline                @ 180..181
+Indent                 @ 189..189
+UpperIdent "True"      @ 189..193
+Arrow                  @ 196..198
+UpperIdent "Error"     @ 199..204
+UpperIdent "OutOfRange" @ 205..215
+Newline                @ 215..216
+UpperIdent "False"     @ 224..229
+Arrow                  @ 231..233
+UpperIdent "Ok"        @ 234..236
+LowerIdent "n"         @ 237..238
+Newline                @ 238..239
+Dedent                 @ 240..240
+Dedent                 @ 240..240
+LowerIdent "main"      @ 240..244
+Equals                 @ 245..246
+Newline                @ 246..247
+Indent                 @ 251..251
+LowerIdent "bounded"   @ 251..258
+StringLit "42"         @ 259..263
+Comma                  @ 263..264
+IntLit 0               @ 265..266
+Comma                  @ 266..267
+IntLit 100             @ 268..271
+KwMatch                @ 272..277
+Newline                @ 277..278
+Indent                 @ 286..286
+UpperIdent "Ok"        @ 286..288
+LowerIdent "n"         @ 289..290
+Arrow                  @ 296..298
+LowerIdent "print"     @ 299..304
+Bang                   @ 304..305
+StringLit "got "       @ 306..312
+PlusPlus               @ 313..315
+LowerIdent "show"      @ 316..320
+LowerIdent "n"         @ 321..322
+Newline                @ 322..323
+UpperIdent "Error"     @ 331..336
+Underscore             @ 337..338
+Arrow                  @ 341..343
+LowerIdent "print"     @ 344..349
+Bang                   @ 349..350
+StringLit "bad input"  @ 351..362
+Newline                @ 362..363
+Dedent                 @ 363..363
+Dedent                 @ 363..363
+Eof                    @ 363..363

@@ -1,0 +1,51 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/04-list-map.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+LowerIdent "main"      @ 29..33
+Equals                 @ 34..35
+Newline                @ 35..36
+Indent                 @ 40..40
+LowerIdent "nums"      @ 40..44
+Equals                 @ 45..46
+LBracket               @ 47..48
+IntLit 1               @ 48..49
+Comma                  @ 49..50
+IntLit 2               @ 51..52
+Comma                  @ 52..53
+IntLit 3               @ 54..55
+Comma                  @ 55..56
+IntLit 4               @ 57..58
+Comma                  @ 58..59
+IntLit 5               @ 60..61
+RBracket               @ 61..62
+Newline                @ 62..63
+LowerIdent "doubled"   @ 67..74
+Equals                 @ 75..76
+LowerIdent "nums"      @ 77..81
+Dot                    @ 81..82
+LowerIdent "map"       @ 82..85
+LowerIdent "x"         @ 86..87
+Arrow                  @ 88..90
+LowerIdent "x"         @ 91..92
+Star                   @ 93..94
+IntLit 2               @ 95..96
+Newline                @ 96..97
+LowerIdent "print"     @ 101..106
+Bang                   @ 106..107
+StringLit "doubled: "  @ 108..119
+PlusPlus               @ 120..122
+LowerIdent "show"      @ 123..127
+LowerIdent "doubled"   @ 128..135
+Newline                @ 135..136
+Dedent                 @ 136..136
+Eof                    @ 136..136

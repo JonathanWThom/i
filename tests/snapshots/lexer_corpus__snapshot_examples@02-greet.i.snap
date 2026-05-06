@@ -1,0 +1,44 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/02-greet.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwUse                  @ 29..32
+UpperIdent "Std"       @ 33..36
+Dot                    @ 36..37
+UpperIdent "IO"        @ 37..39
+LParen                 @ 40..41
+LowerIdent "print"     @ 41..46
+Comma                  @ 46..47
+LowerIdent "readLine"  @ 48..56
+RParen                 @ 56..57
+Newline                @ 57..58
+LowerIdent "main"      @ 59..63
+Equals                 @ 64..65
+Newline                @ 65..66
+Indent                 @ 70..70
+LowerIdent "print"     @ 70..75
+Bang                   @ 75..76
+StringLit "what's your name?" @ 77..96
+Newline                @ 96..97
+LowerIdent "name"      @ 101..105
+Equals                 @ 106..107
+LowerIdent "readLine"  @ 108..116
+Bang                   @ 116..117
+Newline                @ 117..118
+LowerIdent "print"     @ 122..127
+Bang                   @ 127..128
+StringLit "hi, "       @ 129..135
+PlusPlus               @ 136..138
+LowerIdent "name"      @ 139..143
+Newline                @ 143..144
+Dedent                 @ 144..144
+Eof                    @ 144..144

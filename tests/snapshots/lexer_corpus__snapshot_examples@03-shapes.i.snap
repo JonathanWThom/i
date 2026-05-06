@@ -1,0 +1,93 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/03-shapes.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwType                 @ 29..33
+UpperIdent "Shape"     @ 34..39
+Newline                @ 39..40
+Indent                 @ 44..44
+UpperIdent "Circle"    @ 44..50
+Newline                @ 50..51
+Indent                 @ 59..59
+LowerIdent "radius"    @ 59..65
+Colon                  @ 66..67
+UpperIdent "Float"     @ 68..73
+Newline                @ 73..74
+Dedent                 @ 78..78
+UpperIdent "Rect"      @ 78..82
+Newline                @ 82..83
+Indent                 @ 91..91
+LowerIdent "width"     @ 91..96
+Colon                  @ 97..98
+UpperIdent "Float"     @ 99..104
+Newline                @ 104..105
+LowerIdent "height"    @ 113..119
+Colon                  @ 120..121
+UpperIdent "Float"     @ 122..127
+Newline                @ 127..128
+Dedent                 @ 129..129
+Dedent                 @ 129..129
+LowerIdent "area"      @ 129..133
+Equals                 @ 134..135
+LowerIdent "shape"     @ 136..141
+Arrow                  @ 142..144
+Newline                @ 144..145
+Indent                 @ 149..149
+LowerIdent "shape"     @ 149..154
+KwMatch                @ 155..160
+Newline                @ 160..161
+Indent                 @ 169..169
+UpperIdent "Circle"    @ 169..175
+LowerIdent "r"         @ 176..177
+Arrow                  @ 181..183
+FloatLit 3.14159       @ 184..191
+Star                   @ 192..193
+LowerIdent "r"         @ 194..195
+Caret                  @ 195..196
+IntLit 2               @ 196..197
+Newline                @ 197..198
+UpperIdent "Rect"      @ 206..210
+LowerIdent "w"         @ 211..212
+Comma                  @ 212..213
+LowerIdent "h"         @ 214..215
+Arrow                  @ 218..220
+LowerIdent "w"         @ 221..222
+Star                   @ 223..224
+LowerIdent "h"         @ 225..226
+Newline                @ 226..227
+Dedent                 @ 228..228
+Dedent                 @ 228..228
+LowerIdent "main"      @ 228..232
+Equals                 @ 233..234
+Newline                @ 234..235
+Indent                 @ 239..239
+LowerIdent "s"         @ 239..240
+Equals                 @ 241..242
+UpperIdent "Circle"    @ 243..249
+LParen                 @ 249..250
+LowerIdent "radius"    @ 250..256
+Equals                 @ 257..258
+FloatLit 5             @ 259..262
+RParen                 @ 262..263
+Newline                @ 263..264
+LowerIdent "print"     @ 268..273
+Bang                   @ 273..274
+StringLit "area: "     @ 275..283
+PlusPlus               @ 284..286
+LowerIdent "show"      @ 287..291
+LParen                 @ 292..293
+LowerIdent "area"      @ 293..297
+LowerIdent "s"         @ 298..299
+RParen                 @ 299..300
+Newline                @ 300..301
+Dedent                 @ 301..301
+Eof                    @ 301..301

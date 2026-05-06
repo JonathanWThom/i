@@ -78,4 +78,22 @@ impl TokenKind {
             TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent
         )
     }
+
+    /// Compact human-readable label for snapshot tests.
+    pub fn label(&self) -> String {
+        match self {
+            TokenKind::IntLit(n) => format!("IntLit {}", n),
+            TokenKind::FloatLit(n) => format!("FloatLit {}", n),
+            TokenKind::StringLit(s) => format!("StringLit {:?}", s),
+            TokenKind::LowerIdent(s) => format!("LowerIdent {:?}", s),
+            TokenKind::UpperIdent(s) => format!("UpperIdent {:?}", s),
+            other => format!("{:?}", other),
+        }
+    }
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:<22} @ {:?}", self.kind.label(), self.span)
+    }
 }

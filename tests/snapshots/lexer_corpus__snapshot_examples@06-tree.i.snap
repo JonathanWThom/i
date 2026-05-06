@@ -1,0 +1,116 @@
+---
+source: tests/lexer_corpus.rs
+expression: formatted
+input_file: examples/06-tree.i
+---
+KwModule               @ 0..6
+UpperIdent "Main"      @ 7..11
+Newline                @ 11..12
+Indent                 @ 16..16
+KwExpose               @ 16..22
+LowerIdent "main"      @ 23..27
+Newline                @ 27..28
+Dedent                 @ 29..29
+KwType                 @ 29..33
+UpperIdent "Tree"      @ 34..38
+LowerIdent "a"         @ 39..40
+Newline                @ 40..41
+Indent                 @ 45..45
+UpperIdent "Leaf"      @ 45..49
+Newline                @ 49..50
+UpperIdent "Node"      @ 54..58
+Newline                @ 58..59
+Indent                 @ 67..67
+LowerIdent "value"     @ 67..72
+Colon                  @ 73..74
+LowerIdent "a"         @ 75..76
+Newline                @ 76..77
+LowerIdent "left"      @ 85..89
+Colon                  @ 90..91
+UpperIdent "Tree"      @ 92..96
+LowerIdent "a"         @ 97..98
+Newline                @ 98..99
+LowerIdent "right"     @ 107..112
+Colon                  @ 113..114
+UpperIdent "Tree"      @ 115..119
+LowerIdent "a"         @ 120..121
+Newline                @ 121..122
+Dedent                 @ 123..123
+Dedent                 @ 123..123
+LowerIdent "count"     @ 123..128
+Equals                 @ 129..130
+LowerIdent "tree"      @ 131..135
+Arrow                  @ 136..138
+Newline                @ 138..139
+Indent                 @ 143..143
+LowerIdent "tree"      @ 143..147
+KwMatch                @ 148..153
+Newline                @ 153..154
+Indent                 @ 162..162
+UpperIdent "Leaf"      @ 162..166
+Arrow                  @ 178..180
+IntLit 0               @ 181..182
+Newline                @ 182..183
+UpperIdent "Node"      @ 191..195
+LowerIdent "v"         @ 196..197
+Comma                  @ 197..198
+LowerIdent "l"         @ 199..200
+Comma                  @ 200..201
+LowerIdent "r"         @ 202..203
+Arrow                  @ 207..209
+IntLit 1               @ 210..211
+Plus                   @ 212..213
+LowerIdent "count"     @ 214..219
+LowerIdent "l"         @ 220..221
+Plus                   @ 222..223
+LowerIdent "count"     @ 224..229
+LowerIdent "r"         @ 230..231
+Newline                @ 231..232
+Dedent                 @ 233..233
+Dedent                 @ 233..233
+LowerIdent "main"      @ 233..237
+Equals                 @ 238..239
+Newline                @ 239..240
+Indent                 @ 244..244
+LowerIdent "t"         @ 244..245
+Equals                 @ 246..247
+UpperIdent "Node"      @ 248..252
+LParen                 @ 252..253
+LowerIdent "value"     @ 253..258
+Equals                 @ 259..260
+IntLit 1               @ 261..262
+Comma                  @ 262..263
+LowerIdent "left"      @ 264..268
+Equals                 @ 269..270
+UpperIdent "Leaf"      @ 271..275
+Comma                  @ 275..276
+LowerIdent "right"     @ 277..282
+Equals                 @ 283..284
+UpperIdent "Node"      @ 285..289
+LParen                 @ 289..290
+LowerIdent "value"     @ 290..295
+Equals                 @ 296..297
+IntLit 2               @ 298..299
+Comma                  @ 299..300
+LowerIdent "left"      @ 301..305
+Equals                 @ 306..307
+UpperIdent "Leaf"      @ 308..312
+Comma                  @ 312..313
+LowerIdent "right"     @ 314..319
+Equals                 @ 320..321
+UpperIdent "Leaf"      @ 322..326
+RParen                 @ 326..327
+RParen                 @ 327..328
+Newline                @ 328..329
+LowerIdent "print"     @ 333..338
+Bang                   @ 338..339
+StringLit "count: "    @ 340..349
+PlusPlus               @ 350..352
+LowerIdent "show"      @ 353..357
+LParen                 @ 358..359
+LowerIdent "count"     @ 359..364
+LowerIdent "t"         @ 365..366
+RParen                 @ 366..367
+Newline                @ 367..368
+Dedent                 @ 368..368
+Eof                    @ 368..368
