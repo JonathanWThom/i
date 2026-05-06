@@ -44,7 +44,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
 
             // Read leading whitespace of the next significant line. Blank
             // and comment-only lines are skipped.
-            match read_indent_or_eof(&mut cur) {
+            match read_indent_or_eof(&mut cur, &mut layout)? {
                 None => break,
                 Some(col) => {
                     if layout_active {
@@ -225,21 +225,30 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
 /// Reads leading whitespace of the next significant (non-blank,
 /// non-comment-only) line, skipping any number of blank/comment-only
 /// lines along the way. Returns the column of the first content byte,
-/// or None at EOF.
-fn read_indent_or_eof(cur: &mut Cursor) -> Option<u32> {
+/// or None at EOF. Rejects mixed tabs and spaces in indent.
+fn read_indent_or_eof(cur: &mut Cursor, layout: &mut Layout) -> Result<Option<u32>, Error> {
     loop {
+        let line_start = cur.pos();
         let mut col = 0u32;
+        let mut saw_tab = false;
+        let mut saw_space = false;
         while let Some(c) = cur.peek() {
             match c {
-                b' ' | b'\t' => {
+                b' ' => {
                     cur.bump();
                     col += 1;
+                    saw_space = true;
+                }
+                b'\t' => {
+                    cur.bump();
+                    col += 1;
+                    saw_tab = true;
                 }
                 _ => break,
             }
         }
         match cur.peek() {
-            None => return None,
+            None => return Ok(None),
             Some(b'\n') => {
                 cur.bump();
                 continue;
@@ -253,7 +262,35 @@ fn read_indent_or_eof(cur: &mut Cursor) -> Option<u32> {
                 }
                 continue;
             }
-            _ => return Some(col),
+            _ => {
+                // Significant line — enforce indent-character rules.
+                if saw_tab && saw_space {
+                    return Err(Error {
+                        span: Span::new(line_start, cur.pos()),
+                        kind: ErrorKind::MixedTabsAndSpaces,
+                    });
+                }
+                let line_char = if saw_tab {
+                    Some(b'\t')
+                } else if saw_space {
+                    Some(b' ')
+                } else {
+                    None
+                };
+                if let Some(line_c) = line_char {
+                    match layout.indent_char {
+                        None => layout.indent_char = Some(line_c),
+                        Some(file_c) if file_c != line_c => {
+                            return Err(Error {
+                                span: Span::new(line_start, cur.pos()),
+                                kind: ErrorKind::MixedTabsAndSpaces,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+                return Ok(Some(col));
+            }
         }
     }
 }

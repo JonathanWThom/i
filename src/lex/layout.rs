@@ -13,6 +13,10 @@ pub(super) struct Layout {
     /// 0 (top-level). Pushed when we see deeper indentation, popped when
     /// indentation drops back.
     pub indent_stack: Vec<u32>,
+    /// File-wide indent character (b' ' or b'\t'). Set the first time an
+    /// indented significant line is seen; once set, the other character
+    /// is rejected anywhere it would extend an indent.
+    pub indent_char: Option<u8>,
 }
 
 impl Layout {
@@ -21,6 +25,7 @@ impl Layout {
             paren_depth: 0,
             last_significant: None,
             indent_stack: vec![0],
+            indent_char: None,
         }
     }
 

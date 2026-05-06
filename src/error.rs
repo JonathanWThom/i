@@ -14,4 +14,5 @@ pub enum ErrorKind {
     UnterminatedString,
     InvalidEscape(char),
     InconsistentDedent,
+    MixedTabsAndSpaces,
 }
