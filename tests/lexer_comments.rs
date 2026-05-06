@@ -28,6 +28,6 @@ fn comment_does_not_eat_next_line() {
 
 #[test]
 fn comment_then_token() {
-    let src = "# c1\n# c2\n  y";
+    let src = "# c1\n# c2\ny";
     assert_eq!(kinds(src), vec![LowerIdent("y".into()), Eof]);
 }

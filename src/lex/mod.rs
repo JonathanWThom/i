@@ -16,14 +16,18 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
     loop {
         skip_trivia(&mut cur);
 
-        // Newline handling. A `\n` either:
-        //   - is suppressed (inside parens or after a continuation operator),
-        //   - or emits a Newline token (collapsing consecutive blanks),
-        // and then we continue scanning the next line.
+        // Newline handling. A `\n` may emit a Newline token, then read the
+        // indent of the next significant line and emit Indent/Dedent(s) as
+        // appropriate. Inside parens or after a continuation operator,
+        // layout is suppressed entirely.
         if cur.peek() == Some(b'\n') {
             let nl_start = cur.pos();
             cur.bump();
-            if !layout.suppresses_newline() {
+            let suppress = layout.suppresses_newline();
+            let in_parens = layout.paren_depth > 0;
+            let layout_active = !suppress && !in_parens;
+
+            if layout_active {
                 let last_was_newline = matches!(
                     out.last().map(|t: &Token| &t.kind),
                     Some(TokenKind::Newline)
@@ -37,7 +41,41 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
                     layout.note_emitted(&kind);
                 }
             }
-            continue;
+
+            // Read leading whitespace of the next significant line. Blank
+            // and comment-only lines are skipped.
+            match read_indent_or_eof(&mut cur) {
+                None => break,
+                Some(col) => {
+                    if layout_active {
+                        let pos = cur.pos();
+                        while col < layout.top() {
+                            layout.indent_stack.pop();
+                            let kind = TokenKind::Dedent;
+                            out.push(Token {
+                                span: Span::new(pos, pos),
+                                kind: kind.clone(),
+                            });
+                            layout.note_emitted(&kind);
+                        }
+                        if col > layout.top() {
+                            layout.indent_stack.push(col);
+                            let kind = TokenKind::Indent;
+                            out.push(Token {
+                                span: Span::new(pos, pos),
+                                kind: kind.clone(),
+                            });
+                            layout.note_emitted(&kind);
+                        } else if col != layout.top() {
+                            return Err(Error {
+                                span: Span::new(pos, pos),
+                                kind: ErrorKind::InconsistentDedent,
+                            });
+                        }
+                    }
+                    continue;
+                }
+            }
         }
 
         let start = cur.pos();
@@ -165,12 +203,59 @@ pub fn lex(src: &str) -> Result<Vec<Token>, Error> {
         layout.note_emitted(&kind);
     }
 
+    // Drain any remaining open blocks at EOF.
     let end = cur.pos();
+    while layout.top() > 0 {
+        layout.indent_stack.pop();
+        let kind = TokenKind::Dedent;
+        out.push(Token {
+            span: Span::new(end, end),
+            kind: kind.clone(),
+        });
+        layout.note_emitted(&kind);
+    }
+
     out.push(Token {
         span: Span::new(end, end),
         kind: TokenKind::Eof,
     });
     Ok(out)
+}
+
+/// Reads leading whitespace of the next significant (non-blank,
+/// non-comment-only) line, skipping any number of blank/comment-only
+/// lines along the way. Returns the column of the first content byte,
+/// or None at EOF.
+fn read_indent_or_eof(cur: &mut Cursor) -> Option<u32> {
+    loop {
+        let mut col = 0u32;
+        while let Some(c) = cur.peek() {
+            match c {
+                b' ' | b'\t' => {
+                    cur.bump();
+                    col += 1;
+                }
+                _ => break,
+            }
+        }
+        match cur.peek() {
+            None => return None,
+            Some(b'\n') => {
+                cur.bump();
+                continue;
+            }
+            Some(b'#') => {
+                while let Some(c) = cur.peek() {
+                    if c == b'\n' {
+                        break;
+                    }
+                    cur.bump();
+                }
+                continue;
+            }
+            _ => return Some(col),
+        }
+    }
 }
 
 /// Skips spaces, tabs, and `#` line comments. Newlines are NOT consumed

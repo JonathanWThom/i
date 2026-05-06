@@ -140,3 +140,103 @@ fn arrow_does_not_continue_line() {
         ]
     );
 }
+
+#[test]
+fn block_opens_indent_closes_dedent() {
+    let src = "main =\n    x\n    y\n";
+    assert_eq!(
+        kinds(src),
+        vec![
+            LowerIdent("main".into()),
+            Equals,
+            Newline,
+            Indent,
+            LowerIdent("x".into()),
+            Newline,
+            LowerIdent("y".into()),
+            Newline,
+            Dedent,
+            Eof,
+        ]
+    );
+}
+
+#[test]
+fn nested_blocks() {
+    let src = "a =\n    b =\n        c\n    d\n";
+    assert_eq!(
+        kinds(src),
+        vec![
+            LowerIdent("a".into()),
+            Equals,
+            Newline,
+            Indent,
+            LowerIdent("b".into()),
+            Equals,
+            Newline,
+            Indent,
+            LowerIdent("c".into()),
+            Newline,
+            Dedent,
+            LowerIdent("d".into()),
+            Newline,
+            Dedent,
+            Eof,
+        ]
+    );
+}
+
+#[test]
+fn dedent_drains_at_eof_without_trailing_newline() {
+    // No trailing `\n`, so the dedent comes from the EOF drain.
+    let src = "main =\n    x";
+    assert_eq!(
+        kinds(src),
+        vec![
+            LowerIdent("main".into()),
+            Equals,
+            Newline,
+            Indent,
+            LowerIdent("x".into()),
+            Dedent,
+            Eof,
+        ]
+    );
+}
+
+#[test]
+fn parens_suppress_layout() {
+    // Inside parens, no layout tokens at all.
+    let src = "f (\n    x\n    y\n)";
+    assert_eq!(
+        kinds(src),
+        vec![
+            LowerIdent("f".into()),
+            LParen,
+            LowerIdent("x".into()),
+            LowerIdent("y".into()),
+            RParen,
+            Eof,
+        ]
+    );
+}
+
+#[test]
+fn blank_line_inside_block_is_not_a_dedent() {
+    let src = "main =\n    x\n\n    y\n";
+    assert_eq!(
+        kinds(src),
+        vec![
+            LowerIdent("main".into()),
+            Equals,
+            Newline,
+            Indent,
+            LowerIdent("x".into()),
+            Newline,
+            LowerIdent("y".into()),
+            Newline,
+            Dedent,
+            Eof,
+        ]
+    );
+}

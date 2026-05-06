@@ -9,6 +9,10 @@ use crate::token::TokenKind;
 pub(super) struct Layout {
     pub paren_depth: u32,
     pub last_significant: Option<TokenKind>,
+    /// Column widths of currently-open indented blocks. Always starts with
+    /// 0 (top-level). Pushed when we see deeper indentation, popped when
+    /// indentation drops back.
+    pub indent_stack: Vec<u32>,
 }
 
 impl Layout {
@@ -16,7 +20,12 @@ impl Layout {
         Self {
             paren_depth: 0,
             last_significant: None,
+            indent_stack: vec![0],
         }
+    }
+
+    pub fn top(&self) -> u32 {
+        *self.indent_stack.last().unwrap()
     }
 
     /// Update bookkeeping after a token has been pushed.

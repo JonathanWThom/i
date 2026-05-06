@@ -13,4 +13,5 @@ pub enum ErrorKind {
     InvalidNumber(String),
     UnterminatedString,
     InvalidEscape(char),
+    InconsistentDedent,
 }
