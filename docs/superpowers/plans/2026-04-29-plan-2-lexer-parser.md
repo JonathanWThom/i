@@ -1409,6 +1409,76 @@ git commit -m "Plan 2 Task 12: lexer corpus snapshots over examples/"
 
 ---
 
+#### Task 12.5: Makefile and pre-commit hook
+
+**Files:**
+- Create: `Makefile`
+- Create: `.husky/pre-commit`
+- Create: `package.json`
+- Modify: `.github/workflows/ci.yml`, `.gitignore`, `README.md`
+
+A single source of truth for "what does CI run." `Makefile` exposes
+targets `fmt`, `fmt-check`, `lint`, `test`, `ci` (= fmt-check + lint +
+test), `dev`, `rev` (cargo insta review), `clean`. The CI workflow
+calls `make <target>` per job so the workflow and the local command
+stay in sync.
+
+A husky-managed pre-commit hook runs `make ci` before every commit.
+husky needs Node — the only Node dependency in this project. After
+clone, contributors run `npm install`, which triggers husky's
+`prepare` script and installs the hook.
+
+Trade-off note: husky pulls a JS toolchain into a Rust project. The
+Rust-native alternative is `cargo-husky` (a crate). Swap is a one-line
+edit if Node ever becomes a problem.
+
+- [ ] **Step 1: Create the Makefile** (full content above).
+
+- [ ] **Step 2: Rewire `.github/workflows/ci.yml`**
+
+Each job becomes a single `make <target>` call (`make fmt-check`,
+`make lint`, `make test`).
+
+- [ ] **Step 3: Add husky**
+
+```sh
+npm init -y
+npm install --save-dev husky
+npx husky init   # creates .husky/pre-commit and adds prepare script
+```
+
+Edit `.husky/pre-commit` to one line: `make ci`.
+
+Trim `package.json` to the essentials (drop the auto-generated
+`main`, `keywords`, `bugs`, `homepage`, `repository`, broken `test`
+script). Keep only `name`, `private: true`, `description`, the
+`prepare` script, and `devDependencies`.
+
+- [ ] **Step 4: gitignore `node_modules/`**
+
+- [ ] **Step 5: README — Development section**
+
+Document `make ci`, `make dev`, `make rev`, and the `npm install`
+one-time setup for the pre-commit hook.
+
+- [ ] **Step 6: Verify locally**
+
+Run: `make ci`
+Expected: all three sub-commands pass.
+
+The Task 12.5 commit itself is the first run of the pre-commit hook —
+if `make ci` fails, the commit aborts.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add Makefile .github/workflows/ci.yml .husky/ package.json \
+        .gitignore README.md
+git commit -m "Plan 2 Task 12.5: Makefile and husky pre-commit hook"
+```
+
+---
+
 ### Phase 3 — AST
 
 #### Task 13: AST data types

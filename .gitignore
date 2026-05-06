@@ -2,6 +2,9 @@
 /target
 Cargo.lock
 
+# Node (husky pre-commit hooks only — see package.json)
+node_modules/
+
 # macOS
 .DS_Store
 

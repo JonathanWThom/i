@@ -1,0 +1,11 @@
+{
+  "name": "i",
+  "private": true,
+  "description": "Husky-managed git hooks for the i compiler. Not a JavaScript project.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

@@ -40,6 +40,27 @@ them run yet, because the compiler isn't built.
 
 **Implementation: not started.** Plan 2 (lexer + parser) is next.
 
+## Development
+
+Common commands all sit behind `make`:
+
+```sh
+make ci          # what GitHub Actions runs (fmt-check + lint + test)
+make dev         # cargo test
+make rev         # cargo insta review (snapshot review)
+make help        # full list
+```
+
+A pre-commit hook (managed by [husky](https://typicode.github.io/husky/))
+runs `make ci` before every commit. To wire it up after cloning:
+
+```sh
+npm install      # one-time; installs husky and runs `prepare`
+```
+
+The Node dependency is *only* for the pre-commit hook — the compiler itself
+is pure Rust.
+
 ## Documentation
 
 - [Tour](docs/tour.md) — start here
