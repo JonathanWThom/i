@@ -37,8 +37,8 @@ fn keywords() {
     assert_eq!(
         kinds("type match module expose use as trait impl and or not xor"),
         vec![
-            KwType, KwMatch, KwModule, KwExpose, KwUse, KwAs, KwTrait, KwImpl, KwAnd, KwOr,
-            KwNot, KwXor, Eof,
+            KwType, KwMatch, KwModule, KwExpose, KwUse, KwAs, KwTrait, KwImpl, KwAnd, KwOr, KwNot,
+            KwXor, Eof,
         ]
     );
 }
@@ -47,11 +47,7 @@ fn keywords() {
 fn keyword_lookalike_is_ident() {
     assert_eq!(
         kinds("types typeof"),
-        vec![
-            LowerIdent("types".into()),
-            LowerIdent("typeof".into()),
-            Eof,
-        ]
+        vec![LowerIdent("types".into()), LowerIdent("typeof".into()), Eof,]
     );
 }
 
@@ -98,8 +94,5 @@ fn trailing_underscore_is_error() {
     // `foo_` is also rejected — keeps the rule "no underscores in identifiers"
     // simple to state.
     let err = lex("foo_ bar").unwrap_err();
-    assert!(matches!(
-        err.kind,
-        ErrorKind::UnderscoreInIdentifier { .. }
-    ));
+    assert!(matches!(err.kind, ErrorKind::UnderscoreInIdentifier { .. }));
 }

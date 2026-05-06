@@ -48,12 +48,7 @@ fn leading_blank_lines_ignored() {
 fn trailing_arith_op_continues_line() {
     assert_eq!(
         kinds("a +\nb"),
-        vec![
-            LowerIdent("a".into()),
-            Plus,
-            LowerIdent("b".into()),
-            Eof,
-        ]
+        vec![LowerIdent("a".into()), Plus, LowerIdent("b".into()), Eof,]
     );
 }
 
@@ -61,12 +56,7 @@ fn trailing_arith_op_continues_line() {
 fn trailing_comparison_continues_line() {
     assert_eq!(
         kinds("a <=\nb"),
-        vec![
-            LowerIdent("a".into()),
-            LtEq,
-            LowerIdent("b".into()),
-            Eof,
-        ]
+        vec![LowerIdent("a".into()), LtEq, LowerIdent("b".into()), Eof,]
     );
 }
 

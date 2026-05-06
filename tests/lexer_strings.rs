@@ -28,11 +28,7 @@ fn empty_string() {
 fn two_strings() {
     assert_eq!(
         kinds(r#""hi" "there""#),
-        vec![
-            StringLit("hi".into()),
-            StringLit("there".into()),
-            Eof,
-        ]
+        vec![StringLit("hi".into()), StringLit("there".into()), Eof,]
     );
 }
 

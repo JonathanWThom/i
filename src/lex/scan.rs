@@ -63,8 +63,7 @@ pub(super) fn scan_number(cur: &mut Cursor, src: &str, start: u32) -> Result<Tok
         }
     }
     // Float? Only if `.` is followed by a digit.
-    let is_float =
-        cur.peek() == Some(b'.') && cur.peek_at(1).map_or(false, |c| c.is_ascii_digit());
+    let is_float = cur.peek() == Some(b'.') && cur.peek_at(1).map_or(false, |c| c.is_ascii_digit());
     if is_float {
         cur.bump(); // consume '.'
         while let Some(c) = cur.peek() {

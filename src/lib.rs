@@ -1,4 +1,4 @@
-pub mod span;
 pub mod error;
-pub mod token;
 pub mod lex;
+pub mod span;
+pub mod token;
