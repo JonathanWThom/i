@@ -63,7 +63,7 @@ pub(super) fn scan_number(cur: &mut Cursor, src: &str, start: u32) -> Result<Tok
         }
     }
     // Float? Only if `.` is followed by a digit.
-    let is_float = cur.peek() == Some(b'.') && cur.peek_at(1).map_or(false, |c| c.is_ascii_digit());
+    let is_float = cur.peek() == Some(b'.') && cur.peek_at(1).is_some_and(|c| c.is_ascii_digit());
     if is_float {
         cur.bump(); // consume '.'
         while let Some(c) = cur.peek() {
@@ -93,7 +93,7 @@ pub(super) fn scan_underscore(cur: &mut Cursor, src: &str, start: u32) -> Result
     cur.bump(); // the underscore itself
     if cur
         .peek()
-        .map_or(false, |c| c.is_ascii_alphanumeric() || c == b'_')
+        .is_some_and(|c| c.is_ascii_alphanumeric() || c == b'_')
     {
         while let Some(c) = cur.peek() {
             if c.is_ascii_alphanumeric() || c == b'_' {
@@ -102,9 +102,7 @@ pub(super) fn scan_underscore(cur: &mut Cursor, src: &str, start: u32) -> Result
                 break;
             }
         }
-        let name = std::str::from_utf8(&src.as_bytes()[start as usize..cur.pos() as usize])
-            .unwrap()
-            .to_string();
+        let name = src[start as usize..cur.pos() as usize].to_string();
         return Err(Error {
             span: Span::new(start, cur.pos()),
             kind: ErrorKind::UnderscoreInIdentifier {
@@ -135,9 +133,7 @@ pub(super) fn scan_ident_or_keyword(
                     break;
                 }
             }
-            let name = std::str::from_utf8(&src.as_bytes()[start as usize..cur.pos() as usize])
-                .unwrap()
-                .to_string();
+            let name = src[start as usize..cur.pos() as usize].to_string();
             return Err(Error {
                 span: Span::new(start, cur.pos()),
                 kind: ErrorKind::UnderscoreInIdentifier {
@@ -149,9 +145,7 @@ pub(super) fn scan_ident_or_keyword(
             break;
         }
     }
-    let text = std::str::from_utf8(&src.as_bytes()[start as usize..cur.pos() as usize])
-        .unwrap()
-        .to_string();
+    let text = src[start as usize..cur.pos() as usize].to_string();
     Ok(if is_upper {
         TokenKind::UpperIdent(text)
     } else {

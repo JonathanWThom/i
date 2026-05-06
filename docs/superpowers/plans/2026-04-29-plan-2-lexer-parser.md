@@ -1305,6 +1305,45 @@ git commit -m "Plan 2 Task 11: error on mixed tabs and spaces"
 
 ---
 
+#### Task 11.5: GitHub Actions CI
+
+**Files:**
+- Create: `.github/workflows/ci.yml`
+
+A minimum bar for green-on-main: every push and PR runs three jobs in
+parallel — `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+and `cargo test`. The clippy/test jobs cache the build between runs via
+`Swatinem/rust-cache@v2` so subsequent CI runs finish in ~30s instead of
+~3min. `RUSTFLAGS: -D warnings` is set globally so any compile warning
+also fails CI.
+
+`cargo doc` is *not* in CI yet — we have no doc comments to check. Add
+later when there's a public API worth documenting.
+
+- [ ] **Step 1: Run clippy locally first**
+
+Run: `cargo clippy --all-targets -- -D warnings`
+Fix any lints before adding the workflow, so the first CI run is green.
+
+- [ ] **Step 2: Create `.github/workflows/ci.yml`** (full content above).
+
+- [ ] **Step 3: Verify locally**
+
+Run: `cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings && cargo test`
+Expected: all three commands exit 0.
+
+- [ ] **Step 4: Commit and push**
+
+```bash
+git add .github/workflows/ci.yml
+git commit -m "Plan 2 Task 11.5: CI on every push (fmt + clippy + test)"
+git push
+```
+
+Watch the first run on GitHub; expected green across all three jobs.
+
+---
+
 #### Task 12: Lexer corpus snapshot tests
 
 **Files:**

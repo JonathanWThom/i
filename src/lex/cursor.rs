@@ -15,10 +15,6 @@ impl<'a> Cursor<'a> {
         self.pos as u32
     }
 
-    pub fn at_end(&self) -> bool {
-        self.pos >= self.src.len()
-    }
-
     pub fn peek(&self) -> Option<u8> {
         self.src.get(self.pos).copied()
     }

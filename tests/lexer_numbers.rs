@@ -16,8 +16,8 @@ fn integers() {
 #[test]
 fn floats() {
     assert_eq!(
-        kinds("3.14 0.0 100.5"),
-        vec![FloatLit(3.14), FloatLit(0.0), FloatLit(100.5), Eof]
+        kinds("2.5 0.0 100.5"),
+        vec![FloatLit(2.5), FloatLit(0.0), FloatLit(100.5), Eof]
     );
 }
 
@@ -25,14 +25,14 @@ fn floats() {
 fn negative_is_two_tokens() {
     // per Plan 2 decision: unary minus + literal
     assert_eq!(
-        kinds("-3 -3.14"),
-        vec![Minus, IntLit(3), Minus, FloatLit(3.14), Eof]
+        kinds("-3 -2.5"),
+        vec![Minus, IntLit(3), Minus, FloatLit(2.5), Eof]
     );
 }
 
 #[test]
 fn dot_after_digits_is_float() {
-    assert_eq!(kinds("3.14"), vec![FloatLit(3.14), Eof]);
+    assert_eq!(kinds("2.5"), vec![FloatLit(2.5), Eof]);
 }
 
 #[test]
