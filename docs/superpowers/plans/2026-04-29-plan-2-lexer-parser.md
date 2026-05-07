@@ -1741,6 +1741,8 @@ A small writer that tracks indent depth and emits `(node ...)` forms. Each AST v
 
 Update `node_eq` in Task 13 to compare `format!("{}", self)` against `format!("{}", other)`. Span-blind by construction.
 
+`Display` is implemented on `File` (top level) and `ExprKind` (so parser tests in Task 16+ can format individual expressions). The shared `Printer` exposes both `write_file(&File)` and `write_expr_kind(&ExprKind)` so they reuse the same indent rules.
+
 - [ ] **Step 4: Run tests**
 
 Run: `cargo test --lib ast`
@@ -1945,8 +1947,8 @@ pub(super) fn parse_atom(cur: &mut Cursor) -> Result<Expr, Error> {
         TokenKind::LParen => {
             cur.bump();
             let e = parse_expr(cur)?;
-            cur.expect(TokenKind::RParen, "`)`")?;
-            Ok(Spanned { span: start.merge(cur.peek().span), node: ExprKind::Paren(Box::new(e)) })
+            let close = cur.expect(TokenKind::RParen, "`)`")?.span;
+            Ok(Spanned { span: start.merge(close), node: ExprKind::Paren(Box::new(e)) })
         }
         TokenKind::LBracket => {
             cur.bump();
@@ -1957,8 +1959,8 @@ pub(super) fn parse_atom(cur: &mut Cursor) -> Result<Expr, Error> {
                     items.push(parse_expr(cur)?);
                 }
             }
-            cur.expect(TokenKind::RBracket, "`]`")?;
-            Ok(Spanned { span: start.merge(cur.peek().span), node: ExprKind::List(items) })
+            let close = cur.expect(TokenKind::RBracket, "`]`")?.span;
+            Ok(Spanned { span: start.merge(close), node: ExprKind::List(items) })
         }
         _ => Err(Error {
             span: start,

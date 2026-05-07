@@ -447,7 +447,11 @@ impl Printer {
     }
 
     fn write_expr(&mut self, expr: &Expr) {
-        match &expr.node {
+        self.write_expr_kind(&expr.node);
+    }
+
+    fn write_expr_kind(&mut self, kind: &ExprKind) {
+        match kind {
             ExprKind::IntLit(n) => {
                 self.push("(int ");
                 self.push(&n.to_string());
@@ -759,6 +763,14 @@ impl fmt::Display for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut p = Printer::new();
         p.write_file(self);
+        f.write_str(&p.out)
+    }
+}
+
+impl fmt::Display for ExprKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut p = Printer::new();
+        p.write_expr_kind(self);
         f.write_str(&p.out)
     }
 }

@@ -6,7 +6,6 @@ pub(super) struct Cursor<'a> {
     pos: usize,
 }
 
-#[allow(dead_code)]
 impl<'a> Cursor<'a> {
     pub fn new(toks: &'a [Token]) -> Self {
         Self { toks, pos: 0 }
