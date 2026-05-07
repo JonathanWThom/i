@@ -32,7 +32,7 @@
 - [x] Lexer corpus snapshots over `examples/` (Task 12)
 - [x] Makefile + husky pre-commit (Task 12.5)
 - [x] AST data types (Task 13)
-- [ ] AST custom Display (Task 14)
+- [x] AST custom Display (Task 14)
 - [ ] Parser: atoms, Pratt expressions, calls/postfix, construction (Tasks 15-20)
 - [ ] Parser: patterns, match, types (Tasks 21-23)
 - [ ] Parser: bindings, type/trait/impl decls, modules (Tasks 24-26)
