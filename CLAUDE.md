@@ -24,6 +24,23 @@ mode, you still work one task at a time and still summarise. Auto mode
 means "don't ask me to confirm low-risk decisions inside a task," not
 "chain ten tasks together silently."
 
+**Walkthroughs on request.** The 4-6 line summary is the default. When
+I ask for a walkthrough — or when a task introduces a new module,
+pattern, or substantial design decision and you sense it would help —
+expand into:
+
+- **What got built** — scope of the task, what's now possible.
+- **File layout** — paths, how new files fit together.
+- **Key concepts** — design decisions and patterns, grounded in
+  concrete code (file paths, sometimes file:line) rather than abstract
+  theory. Small concrete examples beat long prose.
+- **Why** — alternatives considered, tradeoffs made.
+- **What's deferred** — what's intentionally not here yet, and which
+  later task fills it in.
+
+Don't pad. Drop any section with nothing interesting to say. The
+walkthrough is a learning tool — pick the parts that actually teach.
+
 **TDD strictly.** Write the failing test first. Run it to confirm it
 fails. Write the smallest implementation that makes it pass. Run again
 to confirm green. Commit. The plan files spell this out per task; follow
