@@ -64,6 +64,14 @@ functions.
 **Span on every token and AST node.** Compile errors are useful only
 when they can point at source. Don't drop spans for ergonomics.
 
+**Test placement follows Rust idiom.** Unit tests on a single struct or
+trait impl live inline in the same file as a `#[cfg(test)] mod tests`
+block. Integration tests against the public API (e.g. `lex()` over many
+inputs) live in `tests/`. Both can coexist; pick by what the test is
+exercising, not by where similar tests already live. Snapshot tests
+(insta) go in `tests/` regardless because the `.snap` files live next
+to them.
+
 ## Commits
 
 Format the commit headline as `Plan N Task M: <verb-led description>`.
