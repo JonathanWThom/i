@@ -1,12 +1,8 @@
 # i
 
-A sparse, statically-typed language in development. Building spec first as a
-learning exercise.
+A sparse, statically-typed language in development. Building spec first as a learning exercise.
 
-The surface is as sparse as I could make it without giving up safety — full
-type and effect inference, with the structural surface stripped down to a
-handful of operators. (Four of them carry the binding structure: `:`, `=`,
-`->`, `.`. Arithmetic, `!`, `?`, and the rest sit on top.)
+ The syntax is as small as I could make it without giving up safety. Type and effect inference handle most of what would normally need syntax, leaving a handful of operators on the surface.
 
 ```i
 type Point
@@ -21,31 +17,17 @@ main =
     print! "distance: " ++ show (p1.distance p2)
 ```
 
-## What this is
+My primary goal is to learn something, but for the language itself, the
+priorities are:
 
-A learning project I'm doing in public. I want to understand how a
-compiler works by actually building one — with a real spec, not a toy
-grammar. I'm working through it slowly, one task at a time; the commits
-and the plans under `docs/superpowers/plans/` show what I did and in what
-order, if you want to follow along.
-
-Nothing runs yet. The design is opinionated and the spec is committed,
-but the implementation is half a lexer and stops there. Don't try to use
-it. Not looking for contributors right now.
-
-Priorities, in order:
-
-1. **Aesthetic minimalism.** The program on screen should look like the idea
-   you have in your head.
-2. **Fits in your head.** Small enough that the whole core stays in working
-   memory once you've used it for a while. (Not "afternoon-fast" if you've
-   never met type and effect inference before — that's a longer ramp.)
-3. **Ergonomic.** Sparse to help, not to puzzle.
+1. **Minimal.** Easy to learn.
+2. **Safe.** No surprises.
+3. **Joyful.** Fun to write and read.
 
 ## Status
 
-Docs are complete; lexer is complete and snapshot-tested; parser and
-everything after it are unwritten. For the live state — phases, current
+Docs are complete; lexer is complete and snapshot-tested; the parser is in
+progress. For the live state — phases, current
 plan, task-level checkboxes — see
 [`docs/superpowers/plans/PROGRESS.md`](docs/superpowers/plans/PROGRESS.md).
 
