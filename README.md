@@ -20,7 +20,7 @@ main =
 My primary goal is to learn something, but for the language itself, the
 priorities are:
 
-1. **Minimal.** Easy to learn.
+1. **Minimal.** Easy to learn and remember.
 2. **Safe.** No surprises.
 3. **Joyful.** Fun to write and read.
 
