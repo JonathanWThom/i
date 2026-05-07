@@ -36,17 +36,17 @@ Once v1 ships, work splits into independent tracks. Ordering is approximate — 
 | # | Plan | Track | Deliverable |
 |---|---|---|---|
 | 9 | **Formatter (`i fmt`)** | Tooling | Canonical pretty-printer turned into an in-place formatter; `i fmt path/...` rewrites files; CI mode `i fmt --check` exits non-zero on drift. |
-| 10 | **Language server** | Tooling | LSP-protocol server: hover types, go-to-definition, find references, diagnostics on save, completions. One binary, one VS Code extension as the reference client. |
-| 11 | **Editor plugins** | Tooling | TextMate grammar for syntax highlighting (drives VS Code, Sublime, others); tree-sitter grammar; reference VS Code extension; community-maintained Vim/Neovim and JetBrains adapters as scope allows. |
-| 12 | **REPL** | Tooling | Interactive `i repl` with multi-line input, type info on every binding, `:t`/`:k`/`:doc` commands. |
-| 13 | **Doc generator** | Tooling | `i doc` extracts type signatures and doc comments from `.i` files, emits browseable HTML/markdown. The stdlib reference becomes generated, not hand-written. |
-| 14 | **Bytecode VM (v2)** | Codegen | Compile to a stack-based bytecode; `.ic` artifact runnable by `i exec`. Wins on startup time and execution speed over the tree-walker. |
-| 15 | **Native codegen (v3)** | Codegen | Cranelift, LLVM, or custom backend producing standalone binaries. Decision deferred until v2 is shipped. |
+| 10 | **Bytecode VM (v2)** | Codegen | Compile to a stack-based bytecode; `.ic` artifact runnable by `i exec`. Wins on startup time and execution speed over the tree-walker. |
+| 11 | **Native codegen (v3)** | Codegen | Cranelift, LLVM, or custom backend producing standalone binaries. Decision deferred until v2 is shipped. |
+| 12 | **Language server** | Tooling | LSP-protocol server: hover types, go-to-definition, find references, diagnostics on save, completions. One binary, one VS Code extension as the reference client. |
+| 13 | **Editor plugins** | Tooling | TextMate grammar for syntax highlighting (drives VS Code, Sublime, others); tree-sitter grammar; reference VS Code extension; community-maintained Vim/Neovim and JetBrains adapters as scope allows. |
+| 14 | **REPL** | Tooling | Interactive `i repl` with multi-line input, type info on every binding, `:t`/`:k`/`:doc` commands. |
+| 15 | **Doc generator** | Tooling | `i doc` extracts type signatures and doc comments from `.i` files, emits browseable HTML/markdown. The stdlib reference becomes generated, not hand-written. |
 | 16 | **Concurrency (actors)** | Runtime | Actor-based message passing on top of the effect system; no shared mutable state across boundaries. Specified after v1 because it's load-bearing on language design. |
 | 17 | **Package manager** | Distribution | `i.toml` manifest, dependency resolution, registry. Shipped only when there's enough stdlib and stability that third-party libraries make sense. |
 | 18 | **Stdlib expansion** | Library | Networking, async, JSON, regex, time, env. Added as cross-cutting demand emerges, not preemptively. |
 
-The tooling plans (9-13) are independent of the codegen plans (14-15) and can be tackled in either order. The runtime, distribution, and library tracks (16-18) slot in wherever demand lands.
+Codegen (Plans 10-11) sits second because `i` is a compiled language, not a tree-walker — the v1 interpreter is a stepping stone, and getting to bytecode is the real goal. Formatter goes first only because every other tool depends on stable canonical layout. The remaining tooling (12-15) and the runtime/distribution/library tracks (16-18) slot in wherever demand lands.
 
 ## Guiding rules across all plans
 
@@ -77,8 +77,8 @@ is approximate.
 
 - **Production polish during v1.** Release engineering, `homebrew` formula,
   language server, editor plugins are scheduled for the after-v1 tracks
-  (Plans 9-13).
+  (Plans 9, 12-15).
 - **Performance.** The interpreter will be slow. That's fine until v1 is
-  feature-complete; optimization happens in the codegen track (Plans 14-15).
+  feature-complete; optimization happens in the codegen track (Plans 10-11).
 - **Backwards compatibility.** Until the language is announced, breaking
   changes are free.

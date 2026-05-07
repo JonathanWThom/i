@@ -53,12 +53,12 @@
 
 ## After v1
 - [ ] Formatter (`i fmt`) — Plan 9 (TBD)
-- [ ] Language server — Plan 10 (TBD)
-- [ ] Editor plugins — Plan 11 (TBD)
-- [ ] REPL — Plan 12 (TBD)
-- [ ] Doc generator — Plan 13 (TBD)
-- [ ] Bytecode VM (v2) — Plan 14 (TBD)
-- [ ] Native codegen (v3) — Plan 15 (TBD)
+- [ ] Bytecode VM (v2) — Plan 10 (TBD)
+- [ ] Native codegen (v3) — Plan 11 (TBD)
+- [ ] Language server — Plan 12 (TBD)
+- [ ] Editor plugins — Plan 13 (TBD)
+- [ ] REPL — Plan 14 (TBD)
+- [ ] Doc generator — Plan 15 (TBD)
 - [ ] Concurrency (actors) — Plan 16 (TBD)
 - [ ] Package manager — Plan 17 (TBD)
 - [ ] Stdlib expansion — Plan 18 (TBD)
