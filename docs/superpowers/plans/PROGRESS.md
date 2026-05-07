@@ -62,3 +62,4 @@
 - [ ] Concurrency (actors) — Plan 16 (TBD)
 - [ ] Package manager — Plan 17 (TBD)
 - [ ] Stdlib expansion — Plan 18 (TBD)
+- [ ] String interpolation — Plan 19 (TBD)

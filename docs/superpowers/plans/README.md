@@ -45,8 +45,9 @@ Once v1 ships, work splits into independent tracks. Ordering is approximate — 
 | 16 | **Concurrency (actors)** | Runtime | Actor-based message passing on top of the effect system; no shared mutable state across boundaries. Specified after v1 because it's load-bearing on language design. |
 | 17 | **Package manager** | Distribution | `i.toml` manifest, dependency resolution, registry. Shipped only when there's enough stdlib and stability that third-party libraries make sense. |
 | 18 | **Stdlib expansion** | Library | Networking, async, JSON, regex, time, env. Added as cross-cutting demand emerges, not preemptively. |
+| 19 | **String interpolation** | Language | Syntactic form like `f"hello, {name}"` (or similar) for embedding expressions inside strings. Each placeholder must produce a `String`, by `Show` or directly. Lexer, parser, type checker, and codegen all extended. Purely additive — existing programs unaffected. |
 
-Codegen (Plans 10-11) sits second because `i` is a compiled language, not a tree-walker — the v1 interpreter is a stepping stone, and getting to bytecode is the real goal. Formatter goes first only because every other tool depends on stable canonical layout. The remaining tooling (12-15) and the runtime/distribution/library tracks (16-18) slot in wherever demand lands.
+Codegen (Plans 10-11) sits second because `i` is a compiled language, not a tree-walker — the v1 interpreter is a stepping stone, and getting to bytecode is the real goal. Formatter goes first only because every other tool depends on stable canonical layout. The remaining tooling (12-15), the runtime/distribution/library tracks (16-18), and language extensions (19) slot in wherever demand lands.
 
 ## Guiding rules across all plans
 
