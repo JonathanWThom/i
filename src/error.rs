@@ -22,4 +22,5 @@ pub enum ErrorKind {
         found: String,
         expected: &'static str,
     },
+    ChainedComparison,
 }
