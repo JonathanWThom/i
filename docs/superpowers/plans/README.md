@@ -29,9 +29,9 @@ they're the contract.
 | 7 | **Driver / CLI** | `i run`, `i check`, source-span error messages | `docs/building.md` works as described end-to-end |
 | 8 | **Golden test harness** | CI runner over `examples/` and negative tests | `cargo test` runs all goldens; broken programs fail with expected output |
 
-## Post-v1 tracks (not committed; sketched only)
+## After v1
 
-After v1 ships, work splits into independent tracks. Each is a future plan, not a commitment. Approximate ordering — formatter is the natural first post-v1 step because every other tool wants stable canonical layout to depend on.
+Once v1 ships, work splits into independent tracks. Ordering is approximate — formatter is the natural first because every other tool wants stable canonical layout to depend on. Tracks are independent past that and can run in parallel.
 
 | # | Plan | Track | Deliverable |
 |---|---|---|---|
@@ -46,7 +46,7 @@ After v1 ships, work splits into independent tracks. Each is a future plan, not 
 | 17 | **Package manager** | Distribution | `i.toml` manifest, dependency resolution, registry. Shipped only when there's enough stdlib and stability that third-party libraries make sense. |
 | 18 | **Stdlib expansion** | Library | Networking, async, JSON, regex, time, env. Added as cross-cutting demand emerges, not preemptively. |
 
-These can run in parallel once v1 ships. The tooling plans (9-13) are independent of the codegen plans (14-15) and can be tackled in either order.
+The tooling plans (9-13) are independent of the codegen plans (14-15) and can be tackled in either order. The runtime, distribution, and library tracks (16-18) slot in wherever demand lands.
 
 ## Guiding rules across all plans
 
@@ -65,9 +65,9 @@ The language is "v1 done" when:
 - `cargo install i-lang && i run hello.i` works on a clean machine.
 - A new reader can read `docs/tour.md` and write a small program without consulting the design spec.
 
-After v1: see "Post-v1 tracks" above for the sketched-out next plans
-(tooling, codegen, concurrency, package manager, stdlib expansion). None
-of those are committed yet.
+After v1: see "After v1" above for the next plans (tooling, codegen,
+concurrency, package manager, stdlib expansion). All committed; ordering
+is approximate.
 
 ## Currently active plan
 
@@ -76,7 +76,8 @@ of those are committed yet.
 ## Out of scope for this roadmap
 
 - **Production polish during v1.** Release engineering, `homebrew` formula,
-  language server, editor plugins are post-v1 (Plans 9-13).
+  language server, editor plugins are scheduled for the after-v1 tracks
+  (Plans 9-13).
 - **Performance.** The interpreter will be slow. That's fine until v1 is
   feature-complete; optimization happens in the codegen track (Plans 14-15).
 - **Backwards compatibility.** Until the language is announced, breaking

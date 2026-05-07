@@ -43,10 +43,22 @@
 - [ ] Pretty printer + round-trip property test (Tasks 29-30)
 - [ ] Document testing strategy (Task 31)
 
-## Later phases
+## Later v1 phases
 - [ ] Name resolution — Plan 3 (TBD)
 - [ ] Type checker — Plan 4 (TBD)
 - [ ] Interpreter — Plan 5 (TBD)
 - [ ] Stdlib — Plan 6 (TBD)
 - [ ] Driver / CLI — Plan 7 (TBD)
 - [ ] Golden test harness — Plan 8 (TBD)
+
+## After v1
+- [ ] Formatter (`i fmt`) — Plan 9 (TBD)
+- [ ] Language server — Plan 10 (TBD)
+- [ ] Editor plugins — Plan 11 (TBD)
+- [ ] REPL — Plan 12 (TBD)
+- [ ] Doc generator — Plan 13 (TBD)
+- [ ] Bytecode VM (v2) — Plan 14 (TBD)
+- [ ] Native codegen (v3) — Plan 15 (TBD)
+- [ ] Concurrency (actors) — Plan 16 (TBD)
+- [ ] Package manager — Plan 17 (TBD)
+- [ ] Stdlib expansion — Plan 18 (TBD)
