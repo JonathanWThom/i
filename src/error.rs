@@ -9,10 +9,17 @@ pub struct Error {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
     UnexpectedChar(char),
-    UnderscoreInIdentifier { name: String, suggestion: String },
+    UnderscoreInIdentifier {
+        name: String,
+        suggestion: String,
+    },
     InvalidNumber(String),
     UnterminatedString,
     InvalidEscape(char),
     InconsistentDedent,
     MixedTabsAndSpaces,
+    Unexpected {
+        found: String,
+        expected: &'static str,
+    },
 }
