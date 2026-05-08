@@ -1,11 +1,62 @@
 use super::cursor::Cursor;
-use crate::ast::{BinOp, Expr, ExprKind, UnaryOp};
+use crate::ast::{BinOp, Expr, ExprKind, Pattern, PatternKind, UnaryOp};
 use crate::error::{Error, ErrorKind};
 use crate::span::Spanned;
 use crate::token::TokenKind;
 
 pub(super) fn parse_expr(cur: &mut Cursor) -> Result<Expr, Error> {
+    if looks_like_lambda(cur) {
+        return parse_lambda(cur);
+    }
     parse_expr_bp(cur, 0)
+}
+
+fn looks_like_lambda(cur: &Cursor) -> bool {
+    let mut i = 0;
+    loop {
+        match cur.peek_n(i) {
+            Some(TokenKind::LowerIdent(_)) => i += 1,
+            Some(TokenKind::Arrow) if i > 0 => return true,
+            _ => return false,
+        }
+    }
+}
+
+fn parse_lambda(cur: &mut Cursor) -> Result<Expr, Error> {
+    let start = cur.peek().span;
+    let mut params: Vec<Pattern> = Vec::new();
+    loop {
+        let span = cur.peek().span;
+        match cur.peek_kind().clone() {
+            TokenKind::LowerIdent(name) => {
+                cur.bump();
+                params.push(Spanned {
+                    span,
+                    node: PatternKind::Var(name),
+                });
+            }
+            TokenKind::Arrow => break,
+            _ => {
+                return Err(Error {
+                    span,
+                    kind: ErrorKind::Unexpected {
+                        found: format!("{:?}", cur.peek_kind()),
+                        expected: "lambda parameter",
+                    },
+                });
+            }
+        }
+    }
+    cur.bump();
+    let body = parse_expr_bp(cur, 0)?;
+    let span = start.merge(body.span);
+    Ok(Spanned {
+        span,
+        node: ExprKind::Lambda {
+            params,
+            body: Box::new(body),
+        },
+    })
 }
 
 fn parse_expr_bp(cur: &mut Cursor, min_bp: u8) -> Result<Expr, Error> {
@@ -18,6 +69,18 @@ fn parse_expr_bp(cur: &mut Cursor, min_bp: u8) -> Result<Expr, Error> {
             span,
             node: ExprKind::UnaryOp {
                 op: UnaryOp::Neg,
+                expr: Box::new(rhs),
+            },
+        }
+    } else if cur.check(&TokenKind::KwNot) {
+        let start = cur.peek().span;
+        cur.bump();
+        let rhs = parse_expr_bp(cur, 40)?;
+        let span = start.merge(rhs.span);
+        Spanned {
+            span,
+            node: ExprKind::UnaryOp {
+                op: UnaryOp::Not,
                 expr: Box::new(rhs),
             },
         }
@@ -78,6 +141,8 @@ fn is_comparison(op: &BinOp) -> bool {
 
 fn infix_for(k: &TokenKind) -> Option<(BinOp, u8, u8)> {
     Some(match k {
+        TokenKind::KwOr => (BinOp::Or, 20, 21),
+        TokenKind::KwAnd => (BinOp::And, 30, 31),
         TokenKind::EqEq => (BinOp::Eq, 50, 51),
         TokenKind::SlashEq => (BinOp::Ne, 50, 51),
         TokenKind::Lt => (BinOp::Lt, 50, 51),

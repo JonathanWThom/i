@@ -611,7 +611,11 @@ impl Printer {
     fn write_pattern(&mut self, pat: &Pattern) {
         match &pat.node {
             PatternKind::Wildcard => self.push("_"),
-            PatternKind::Var(n) => self.push(n),
+            PatternKind::Var(n) => {
+                self.push("(var ");
+                self.push(n);
+                self.push(")");
+            }
             PatternKind::Lit(l) => match l {
                 LitPat::Int(n) => {
                     self.push("(int ");

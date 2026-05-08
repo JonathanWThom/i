@@ -47,3 +47,39 @@ fn concat_right() {
         r#"(++ (str "a") (++ (str "b") (str "c")))"#
     );
 }
+
+#[test]
+fn lambda_simple() {
+    assert_eq!(p("x -> x + 1"), "(lambda ((var x)) (+ (var x) (int 1)))");
+}
+
+#[test]
+fn lambda_multi_param() {
+    assert_eq!(
+        p("a b -> a + b"),
+        "(lambda ((var a) (var b)) (+ (var a) (var b)))"
+    );
+}
+
+#[test]
+fn lambda_body_greedy() {
+    assert_eq!(
+        p("x -> x + 1 + 2"),
+        "(lambda ((var x)) (+ (+ (var x) (int 1)) (int 2)))"
+    );
+}
+
+#[test]
+fn or_left_assoc() {
+    assert_eq!(p("a or b or c"), "(or (or (var a) (var b)) (var c))");
+}
+
+#[test]
+fn and_higher_than_or() {
+    assert_eq!(p("a or b and c"), "(or (var a) (and (var b) (var c)))");
+}
+
+#[test]
+fn not_prefix() {
+    assert_eq!(p("not x"), "(not (var x))");
+}

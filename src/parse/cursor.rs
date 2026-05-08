@@ -19,6 +19,10 @@ impl<'a> Cursor<'a> {
         &self.toks[self.pos].kind
     }
 
+    pub fn peek_n(&self, n: usize) -> Option<&TokenKind> {
+        self.toks.get(self.pos + n).map(|t| &t.kind)
+    }
+
     pub fn at_end(&self) -> bool {
         matches!(self.peek_kind(), TokenKind::Eof)
     }
