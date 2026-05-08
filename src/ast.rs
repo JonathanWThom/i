@@ -560,12 +560,12 @@ impl Printer {
                 self.push(")");
             }
             ExprKind::Bang(e) => {
-                self.push("(bang ");
+                self.push("(! ");
                 self.write_expr(e);
                 self.push(")");
             }
             ExprKind::Question(e) => {
-                self.push("(question ");
+                self.push("(? ");
                 self.write_expr(e);
                 self.push(")");
             }

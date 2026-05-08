@@ -85,7 +85,7 @@ fn parse_expr_bp(cur: &mut Cursor, min_bp: u8) -> Result<Expr, Error> {
             },
         }
     } else {
-        parse_atom(cur)?
+        parse_call(cur)?
     };
 
     while let Some((op, lbp, rbp)) = infix_for(cur.peek_kind()) {
@@ -157,6 +157,90 @@ fn infix_for(k: &TokenKind) -> Option<(BinOp, u8, u8)> {
         TokenKind::Caret => (BinOp::Pow, 90, 90),
         _ => return None,
     })
+}
+
+fn parse_call(cur: &mut Cursor) -> Result<Expr, Error> {
+    let func = parse_postfix(cur)?;
+    if !starts_call_arg(cur.peek_kind()) {
+        return Ok(func);
+    }
+    let mut args = vec![parse_expr_bp(cur, 0)?];
+    while cur.eat(&TokenKind::Comma) {
+        args.push(parse_expr_bp(cur, 0)?);
+    }
+    let span = func.span.merge(args.last().unwrap().span);
+    Ok(Spanned {
+        span,
+        node: ExprKind::Call {
+            func: Box::new(func),
+            args,
+        },
+    })
+}
+
+fn parse_postfix(cur: &mut Cursor) -> Result<Expr, Error> {
+    let mut e = parse_atom(cur)?;
+    loop {
+        match cur.peek_kind() {
+            TokenKind::Dot => {
+                cur.bump();
+                let next_span = cur.peek().span;
+                match cur.peek_kind().clone() {
+                    TokenKind::LowerIdent(n) | TokenKind::UpperIdent(n) => {
+                        cur.bump();
+                        let span = e.span.merge(next_span);
+                        e = Spanned {
+                            span,
+                            node: ExprKind::FieldAccess {
+                                receiver: Box::new(e),
+                                field: n,
+                            },
+                        };
+                    }
+                    other => {
+                        return Err(Error {
+                            span: next_span,
+                            kind: ErrorKind::Unexpected {
+                                found: format!("{:?}", other),
+                                expected: "field name after `.`",
+                            },
+                        });
+                    }
+                }
+            }
+            TokenKind::Bang => {
+                let span = e.span.merge(cur.peek().span);
+                cur.bump();
+                e = Spanned {
+                    span,
+                    node: ExprKind::Bang(Box::new(e)),
+                };
+            }
+            TokenKind::Question => {
+                let span = e.span.merge(cur.peek().span);
+                cur.bump();
+                e = Spanned {
+                    span,
+                    node: ExprKind::Question(Box::new(e)),
+                };
+            }
+            _ => break,
+        }
+    }
+    Ok(e)
+}
+
+fn starts_call_arg(k: &TokenKind) -> bool {
+    matches!(
+        k,
+        TokenKind::IntLit(_)
+            | TokenKind::FloatLit(_)
+            | TokenKind::StringLit(_)
+            | TokenKind::LowerIdent(_)
+            | TokenKind::UpperIdent(_)
+            | TokenKind::LParen
+            | TokenKind::LBracket
+    )
 }
 
 pub(super) fn parse_atom(cur: &mut Cursor) -> Result<Expr, Error> {
