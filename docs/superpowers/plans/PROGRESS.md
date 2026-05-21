@@ -38,7 +38,7 @@
 - [x] Pratt expressions: arithmetic + comparison (Task 17)
 - [x] Logical ops + lambda (Task 18)
 - [x] Calls + postfix `.` `!` `?` (Task 19)
-- [ ] Parser: construction (Task 20)
+- [x] Construction + record update (Task 20)
 - [ ] Parser: patterns, match, types (Tasks 21-23)
 - [ ] Parser: bindings, type/trait/impl decls, modules (Tasks 24-26)
 - [ ] Parser error tests + corpus snapshots (Tasks 27-28)

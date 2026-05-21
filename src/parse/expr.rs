@@ -1,5 +1,5 @@
 use super::cursor::Cursor;
-use crate::ast::{BinOp, Expr, ExprKind, Pattern, PatternKind, UnaryOp};
+use crate::ast::{BinOp, Expr, ExprKind, KwArg, Pattern, PatternKind, UnaryOp};
 use crate::error::{Error, ErrorKind};
 use crate::span::Spanned;
 use crate::token::TokenKind;
@@ -182,6 +182,28 @@ fn parse_postfix(cur: &mut Cursor) -> Result<Expr, Error> {
     let mut e = parse_atom(cur)?;
     loop {
         match cur.peek_kind() {
+            TokenKind::LParen if looks_like_kwargs(cur) => {
+                cur.bump();
+                let fields = parse_kwargs(cur)?;
+                let close = cur.expect(TokenKind::RParen, "`)`")?.span;
+                let span = e.span.merge(close);
+                e = match e.node {
+                    ExprKind::Ctor(name) => Spanned {
+                        span,
+                        node: ExprKind::Construct {
+                            type_name: name,
+                            fields,
+                        },
+                    },
+                    _ => Spanned {
+                        span,
+                        node: ExprKind::Update {
+                            value: Box::new(e),
+                            fields,
+                        },
+                    },
+                };
+            }
             TokenKind::Dot => {
                 cur.bump();
                 let next_span = cur.peek().span;
@@ -228,6 +250,40 @@ fn parse_postfix(cur: &mut Cursor) -> Result<Expr, Error> {
         }
     }
     Ok(e)
+}
+
+fn looks_like_kwargs(cur: &Cursor) -> bool {
+    matches!(cur.peek_n(1), Some(TokenKind::LowerIdent(_)))
+        && matches!(cur.peek_n(2), Some(TokenKind::Equals))
+}
+
+fn parse_kwargs(cur: &mut Cursor) -> Result<Vec<KwArg>, Error> {
+    let mut kwargs = Vec::new();
+    loop {
+        let name_span = cur.peek().span;
+        let name = match cur.peek_kind().clone() {
+            TokenKind::LowerIdent(n) => {
+                cur.bump();
+                n
+            }
+            other => {
+                return Err(Error {
+                    span: name_span,
+                    kind: ErrorKind::Unexpected {
+                        found: format!("{:?}", other),
+                        expected: "field name",
+                    },
+                });
+            }
+        };
+        cur.expect(TokenKind::Equals, "`=`")?;
+        let value = parse_expr_bp(cur, 0)?;
+        kwargs.push(KwArg { name, value });
+        if !cur.eat(&TokenKind::Comma) {
+            break;
+        }
+    }
+    Ok(kwargs)
 }
 
 fn starts_call_arg(k: &TokenKind) -> bool {

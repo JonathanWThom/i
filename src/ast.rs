@@ -601,7 +601,7 @@ impl Printer {
     }
 
     fn write_kwarg(&mut self, kw: &KwArg) {
-        self.push("(= ");
+        self.push("(kw ");
         self.push(&kw.name);
         self.push(" ");
         self.write_expr(&kw.value);
