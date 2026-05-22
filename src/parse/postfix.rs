@@ -1,5 +1,5 @@
 use super::cursor::Cursor;
-use super::expr::{parse_atom, parse_expr_bp};
+use super::expr::{parse_atom, parse_expr, parse_expr_bp};
 use super::pat::parse_pattern;
 use crate::ast::{Expr, ExprKind, KwArg, MatchArm};
 use crate::error::{Error, ErrorKind};
@@ -11,9 +11,9 @@ pub(super) fn parse_call(cur: &mut Cursor) -> Result<Expr, Error> {
     if !starts_call_arg(cur.peek_kind()) {
         return Ok(func);
     }
-    let mut args = vec![parse_expr_bp(cur, 0)?];
+    let mut args = vec![parse_expr(cur)?];
     while cur.eat(&TokenKind::Comma) {
-        args.push(parse_expr_bp(cur, 0)?);
+        args.push(parse_expr(cur)?);
     }
     let span = func.span.merge(args.last().unwrap().span);
     Ok(Spanned {

@@ -48,3 +48,11 @@ fn postfix_bang() {
 fn postfix_question() {
     assert_eq!(p("parseInt s?"), "(call (var parseInt) (? (var s)))");
 }
+
+#[test]
+fn call_with_lambda_argument() {
+    assert_eq!(
+        p("nums.map x -> x * 2"),
+        "(call (. (var nums) map) (lambda ((pvar x)) (* (var x) (int 2))))"
+    );
+}

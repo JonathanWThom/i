@@ -57,3 +57,11 @@ fn module_then_decls() {
         "(file\n  (module Main (expose-val main))\n  (let main (int 1)))"
     );
 }
+
+#[test]
+fn use_cherry_mixed() {
+    assert_eq!(
+        p("use Geometry (Point, distance)"),
+        "(file\n  (use Geometry (cherry Point distance)))"
+    );
+}

@@ -3132,6 +3132,96 @@ git commit -m "Plan 2 Task 27.5: multi-line lambda body"
 
 ---
 
+#### Task 27.6: Parser gaps blocking Task 28 examples
+
+**Files:**
+- Modify: `src/parse/postfix.rs`
+- Modify: `src/parse/decl.rs`
+- Modify: `tests/parser_calls.rs`
+- Modify: `tests/parser_modules.rs`
+
+Two more parser gaps surfaced by probing `examples/` for Task 28:
+
+1. **Lambda as call argument.** `nums.map x -> x * 2` (example 04)
+   fails. `parse_call` parses each argument with `parse_expr_bp(cur, 0)`,
+   which never checks `looks_like_lambda`. Switch to `parse_expr` so
+   the lambda front-end runs for each argument.
+
+2. **Upper-ident in `use` cherry-pick.** `use Geometry (Point, distance)`
+   (example 08-modules-app) fails. `parse_use_decl` calls `expect_lower`
+   inside the parens, but `docs/modules.md` allows both: types
+   (uppercase) and values (lowercase) can be cherry-picked together.
+
+Both are spec-compliant forms; the parser is over-restrictive.
+
+- [ ] **Step 1: Failing tests**
+
+In `tests/parser_calls.rs`:
+
+```rust
+#[test]
+fn call_with_lambda_argument() {
+    // nums.map x -> x * 2
+    let got = p("nums.map x -> x * 2");
+    assert!(got.contains("(method-call"), "got: {}", got);
+    assert!(got.contains("(lambda ((pvar x))"), "got: {}", got);
+}
+```
+
+(Exact assertion format mirrors how `parser_calls.rs` already writes
+its expectations.)
+
+In `tests/parser_modules.rs`, add a case where the cherry-pick mixes
+upper and lower idents:
+
+```rust
+#[test]
+fn use_cherry_mixed() {
+    // use Geometry (Point, distance)
+    let src = "use Geometry (Point, distance)\n";
+    let got = p_file(src);
+    assert!(got.contains("(cherry Point distance)"), "got: {}", got);
+}
+```
+
+The Display for `UseKind::Cherry` is already type-agnostic — it just
+prints the names — so a single tag covers both kinds. If the Display
+needs to distinguish, decide *now* and amend Step 3.
+
+- [ ] **Step 2: Fix `parse_call`**
+
+In `src/parse/postfix.rs`, swap the two `parse_expr_bp(cur, 0)` calls
+inside `parse_call` for `super::expr::parse_expr(cur)`. Add the
+`use super::expr::parse_expr;` import.
+
+The argument parser now goes through the lambda-aware front door
+without changing its precedence semantics for non-lambda inputs:
+`looks_like_lambda` returns false unless we see `LowerIdent... Arrow`,
+so plain atoms, calls inside parens, etc., still hit `parse_expr_bp`.
+
+- [ ] **Step 3: Fix `parse_use_decl`**
+
+In `src/parse/decl.rs`, change the cherry-pick loop from
+`expect_lower(cur)?` to a small inline match that accepts either
+`LowerIdent` or `UpperIdent` and returns the string. Add a tiny
+helper `expect_ident_either` next to `expect_upper`/`expect_lower`
+if it gets used more than once.
+
+- [ ] **Step 4: Run tests**
+
+Run: `cargo test`
+Expected: all PASS, including the two new cases.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/parse/postfix.rs src/parse/decl.rs \
+        tests/parser_calls.rs tests/parser_modules.rs
+git commit -m "Plan 2 Task 27.6: lambda-as-arg, upper-ident in use cherry"
+```
+
+---
+
 #### Task 28: Parser corpus snapshot tests
 
 **Files:**

@@ -96,9 +96,9 @@ fn parse_use_decl(cur: &mut Cursor) -> Result<Decl, Error> {
     let kind = if cur.eat(&TokenKind::KwAs) {
         UseKind::Alias(expect_upper(cur)?)
     } else if cur.eat(&TokenKind::LParen) {
-        let mut names = vec![expect_lower(cur)?];
+        let mut names = vec![expect_ident(cur)?];
         while cur.eat(&TokenKind::Comma) {
-            names.push(expect_lower(cur)?);
+            names.push(expect_ident(cur)?);
         }
         cur.expect(TokenKind::RParen, "`)`")?;
         UseKind::Cherry(names)
@@ -171,6 +171,23 @@ pub(super) fn expect_upper(cur: &mut Cursor) -> Result<String, Error> {
             kind: ErrorKind::Unexpected {
                 found: format!("{:?}", other),
                 expected: "uppercase identifier",
+            },
+        }),
+    }
+}
+
+fn expect_ident(cur: &mut Cursor) -> Result<String, Error> {
+    let span = cur.peek().span;
+    match cur.peek_kind().clone() {
+        TokenKind::LowerIdent(n) | TokenKind::UpperIdent(n) => {
+            cur.bump();
+            Ok(n)
+        }
+        other => Err(Error {
+            span,
+            kind: ErrorKind::Unexpected {
+                found: format!("{:?}", other),
+                expected: "identifier (lower- or uppercase)",
             },
         }),
     }
