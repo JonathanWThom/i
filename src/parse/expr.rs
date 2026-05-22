@@ -1,6 +1,6 @@
 use super::cursor::Cursor;
 use super::pat::parse_pattern;
-use crate::ast::{BinOp, Expr, ExprKind, KwArg, Pattern, UnaryOp};
+use crate::ast::{BinOp, Expr, ExprKind, KwArg, MatchArm, Pattern, UnaryOp};
 use crate::error::{Error, ErrorKind};
 use crate::span::Spanned;
 use crate::token::TokenKind;
@@ -226,6 +226,28 @@ fn parse_postfix(cur: &mut Cursor) -> Result<Expr, Error> {
                 e = Spanned {
                     span,
                     node: ExprKind::Question(Box::new(e)),
+                };
+            }
+            TokenKind::KwMatch => {
+                cur.bump();
+                cur.expect(TokenKind::Newline, "newline before match arms")?;
+                cur.expect(TokenKind::Indent, "indented match arms")?;
+                let mut arms = Vec::new();
+                while !cur.check(&TokenKind::Dedent) {
+                    let pattern = parse_pattern(cur)?;
+                    cur.expect(TokenKind::Arrow, "`->`")?;
+                    let body = parse_expr_bp(cur, 0)?;
+                    cur.eat(&TokenKind::Newline);
+                    arms.push(MatchArm { pattern, body });
+                }
+                let close = cur.expect(TokenKind::Dedent, "dedent")?.span;
+                let span = e.span.merge(close);
+                e = Spanned {
+                    span,
+                    node: ExprKind::Match {
+                        scrutinee: Box::new(e),
+                        arms,
+                    },
                 };
             }
             _ => break,

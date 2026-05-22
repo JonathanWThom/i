@@ -572,17 +572,18 @@ impl Printer {
             ExprKind::Match { scrutinee, arms } => {
                 self.push("(match ");
                 self.write_expr(scrutinee);
-                self.indent_in();
-                for arm in arms {
-                    self.nl();
+                self.push(" (");
+                for (i, arm) in arms.iter().enumerate() {
+                    if i > 0 {
+                        self.push(" ");
+                    }
                     self.push("(arm ");
                     self.write_pattern(&arm.pattern);
                     self.push(" ");
                     self.write_expr(&arm.body);
                     self.push(")");
                 }
-                self.indent_out();
-                self.push(")");
+                self.push("))");
             }
             ExprKind::Block(items) => {
                 self.push("(block");
