@@ -45,7 +45,7 @@
 - [x] Bindings and block bodies (Task 24)
 - [x] Type, trait, impl declarations (Task 25)
 - [x] Module header, use, and top-level dispatch (Task 26)
-- [ ] AST/parser refactor for file length and modularity (Task 26.5)
+- [x] AST/parser refactor for file length and modularity (Task 26.5)
 - [ ] Parser error tests + corpus snapshots (Tasks 27-28)
 - [ ] Pretty printer + round-trip property test (Tasks 29-30)
 - [ ] Document testing strategy (Task 31)

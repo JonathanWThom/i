@@ -1,5 +1,5 @@
 use super::cursor::Cursor;
-use super::expr::looks_like_kwargs;
+use super::postfix::looks_like_kwargs;
 use crate::ast::{FieldPat, LitPat, Pattern, PatternKind};
 use crate::error::{Error, ErrorKind};
 use crate::span::Spanned;

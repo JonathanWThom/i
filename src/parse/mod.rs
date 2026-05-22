@@ -1,8 +1,11 @@
+mod binding;
 mod cursor;
 mod decl;
 mod expr;
 mod pat;
+mod postfix;
 mod typ;
+mod typedecl;
 
 use crate::ast::{Expr, File, Pattern, Type};
 use crate::error::Error;

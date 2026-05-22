@@ -2935,6 +2935,70 @@ git commit -m "Plan 2 Task 26: module header, use, and top-level dispatch"
 
 ---
 
+#### Task 26.5: Split AST and parser modules (refactor — no behaviour change)
+
+**Files:**
+- Modify/split: `src/ast.rs`, `src/parse/expr.rs`, `src/parse/decl.rs`
+- Likely new: `src/ast/` directory (or sibling files), `src/parse/postfix.rs` (or similar)
+
+By this point the parser surface is feature-complete and the largest files
+are carrying multiple concerns each. `ast.rs` mixes data types with the
+Printer/Display machinery; `parse/expr.rs` mixes Pratt core with postfix
+operators, calls, construct/update, match, and atoms; `parse/decl.rs`
+mixes bindings, blocks, type decls, trait/impl, modules, and use. Task 29
+(pretty printer) will add another big chunk to whichever module owns
+output — splitting now means it lands in a clean home.
+
+No tests change; the full existing suite is the regression check. The aim
+is readability, not architectural reshuffling — keep public APIs
+unchanged so the rest of the crate doesn't move.
+
+- [ ] **Step 1: Inventory and target line counts**
+
+Run `wc -l src/**/*.rs` and identify the files over ~300 lines. For each,
+note the distinct concerns living in it. The goal is roughly one concern
+per file and no file dominating the project. Don't pre-commit to a
+specific split — pick what's natural given the actual code.
+
+Likely candidates at this point:
+
+- **`src/ast.rs`** — split the Printer/Display code out of the data-types
+  file. Either `src/ast/printer.rs` (with `ast.rs` becoming `ast/mod.rs`
+  exporting the same items) or a sibling `src/ast_display.rs`. The data
+  types are the public surface; the printer is implementation detail.
+- **`src/parse/expr.rs`** — Pratt loop and lambda detection are one
+  concern; calls, postfix `.` `!` `?`, construct/update, and match arms
+  are another. Pull the postfix family into `src/parse/postfix.rs` (or
+  similar). Atoms might also move out depending on how it looks.
+- **`src/parse/decl.rs`** — bindings and blocks are one concern; type
+  decls (with members, variants, recursion) are another; trait/impl/use
+  are a third. Type decls are the natural split candidate.
+
+- [ ] **Step 2: Perform the split, file by file**
+
+Move code, adjust `mod` declarations and `use` paths. Keep visibility
+(`pub`, `pub(super)`, `pub(crate)`) the same on every moved item so no
+caller breaks. Run `cargo build` after each file's split to catch
+breakage before piling on the next.
+
+If `ast.rs` becomes `ast/mod.rs`, re-export so `use crate::ast::ExprKind`
+still works.
+
+- [ ] **Step 3: Run the full test suite**
+
+Run: `make ci`
+Expected: every prior test still passes; no new tests added; clippy and
+fmt clean.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/ast* src/parse
+git commit -m "Plan 2 Task 26.5: split AST and parser modules (refactor)"
+```
+
+---
+
 #### Task 27: Parser error tests
 
 **Files:**
