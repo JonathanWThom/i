@@ -46,7 +46,8 @@
 - [x] Type, trait, impl declarations (Task 25)
 - [x] Module header, use, and top-level dispatch (Task 26)
 - [x] AST/parser refactor for file length and modularity (Task 26.5)
-- [ ] Parser error tests + corpus snapshots (Tasks 27-28)
+- [x] Parser error tests (Task 27)
+- [ ] Parser corpus snapshots (Task 28)
 - [ ] Pretty printer + round-trip property test (Tasks 29-30)
 - [ ] Document testing strategy (Task 31)
 
