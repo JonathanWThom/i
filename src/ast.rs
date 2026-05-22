@@ -396,16 +396,21 @@ impl Printer {
             DeclKind::Use { path, kind } => {
                 self.push("(use ");
                 self.push(&path.join("."));
+                self.push(" ");
                 match kind {
-                    UseKind::Whole => {}
+                    UseKind::Whole => self.push("whole"),
                     UseKind::Cherry(names) => {
-                        self.push(" (");
-                        self.push(&names.join(" "));
+                        self.push("(cherry");
+                        for n in names {
+                            self.push(" ");
+                            self.push(n);
+                        }
                         self.push(")");
                     }
                     UseKind::Alias(a) => {
-                        self.push(" as ");
+                        self.push("(alias ");
                         self.push(a);
+                        self.push(")");
                     }
                 }
                 self.push(")");
