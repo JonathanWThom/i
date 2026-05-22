@@ -41,7 +41,7 @@
 - [x] Construction + record update (Task 20)
 - [x] Patterns (Task 21)
 - [x] Match expressions (Task 22)
-- [ ] Parser: types (Task 23)
+- [x] Type expressions (Task 23)
 - [ ] Parser: bindings, type/trait/impl decls, modules (Tasks 24-26)
 - [ ] Parser error tests + corpus snapshots (Tasks 27-28)
 - [ ] Pretty printer + round-trip property test (Tasks 29-30)

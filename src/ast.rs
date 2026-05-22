@@ -676,33 +676,30 @@ impl Printer {
 
     fn write_type(&mut self, ty: &Type) {
         match &ty.node {
-            TypeKind::Var(n) => self.push(n),
+            TypeKind::Var(n) => {
+                self.push("(tvar ");
+                self.push(n);
+                self.push(")");
+            }
             TypeKind::Named { name, args } => {
-                if args.is_empty() {
-                    self.push(name);
-                } else {
-                    self.push("(");
-                    self.push(name);
-                    for a in args {
-                        self.push(" ");
-                        self.write_type(a);
-                    }
-                    self.push(")");
+                self.push("(tnamed ");
+                self.push(name);
+                for a in args {
+                    self.push(" ");
+                    self.write_type(a);
                 }
+                self.push(")");
             }
             TypeKind::Function {
                 params,
                 effect,
                 result,
             } => {
-                self.push("(-> (");
-                for (i, p) in params.iter().enumerate() {
-                    if i > 0 {
-                        self.push(" ");
-                    }
+                self.push("(tfun");
+                for p in params {
+                    self.push(" ");
                     self.write_type(p);
                 }
-                self.push(")");
                 if let Some(e) = effect {
                     self.push(" ");
                     self.write_effect(e);
@@ -712,7 +709,7 @@ impl Printer {
                 self.push(")");
             }
             TypeKind::Tuple(types) => {
-                self.push("(tuple");
+                self.push("(ttuple");
                 for t in types {
                     self.push(" ");
                     self.write_type(t);
@@ -724,9 +721,9 @@ impl Printer {
 
     fn write_effect(&mut self, e: &EffectRow) {
         match e {
-            EffectRow::Empty => self.push("(! ())"),
+            EffectRow::Empty => self.push("(eff-empty)"),
             EffectRow::Named(names) => {
-                self.push("(!");
+                self.push("(eff");
                 for n in names {
                     self.push(" ");
                     self.push(n);
@@ -788,6 +785,18 @@ impl fmt::Display for PatternKind {
             node: self.clone(),
         };
         p.write_pattern(&fake);
+        f.write_str(&p.out)
+    }
+}
+
+impl fmt::Display for TypeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut p = Printer::new();
+        let fake = Spanned {
+            span: crate::span::Span::new(0, 0),
+            node: self.clone(),
+        };
+        p.write_type(&fake);
         f.write_str(&p.out)
     }
 }
