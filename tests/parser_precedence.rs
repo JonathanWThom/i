@@ -50,14 +50,14 @@ fn concat_right() {
 
 #[test]
 fn lambda_simple() {
-    assert_eq!(p("x -> x + 1"), "(lambda ((var x)) (+ (var x) (int 1)))");
+    assert_eq!(p("x -> x + 1"), "(lambda ((pvar x)) (+ (var x) (int 1)))");
 }
 
 #[test]
 fn lambda_multi_param() {
     assert_eq!(
         p("a b -> a + b"),
-        "(lambda ((var a) (var b)) (+ (var a) (var b)))"
+        "(lambda ((pvar a) (pvar b)) (+ (var a) (var b)))"
     );
 }
 
@@ -65,7 +65,7 @@ fn lambda_multi_param() {
 fn lambda_body_greedy() {
     assert_eq!(
         p("x -> x + 1 + 2"),
-        "(lambda ((var x)) (+ (+ (var x) (int 1)) (int 2)))"
+        "(lambda ((pvar x)) (+ (+ (var x) (int 1)) (int 2)))"
     );
 }
 

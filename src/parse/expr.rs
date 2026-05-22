@@ -1,5 +1,6 @@
 use super::cursor::Cursor;
-use crate::ast::{BinOp, Expr, ExprKind, KwArg, Pattern, PatternKind, UnaryOp};
+use super::pat::parse_pattern;
+use crate::ast::{BinOp, Expr, ExprKind, KwArg, Pattern, UnaryOp};
 use crate::error::{Error, ErrorKind};
 use crate::span::Spanned;
 use crate::token::TokenKind;
@@ -25,27 +26,8 @@ fn looks_like_lambda(cur: &Cursor) -> bool {
 fn parse_lambda(cur: &mut Cursor) -> Result<Expr, Error> {
     let start = cur.peek().span;
     let mut params: Vec<Pattern> = Vec::new();
-    loop {
-        let span = cur.peek().span;
-        match cur.peek_kind().clone() {
-            TokenKind::LowerIdent(name) => {
-                cur.bump();
-                params.push(Spanned {
-                    span,
-                    node: PatternKind::Var(name),
-                });
-            }
-            TokenKind::Arrow => break,
-            _ => {
-                return Err(Error {
-                    span,
-                    kind: ErrorKind::Unexpected {
-                        found: format!("{:?}", cur.peek_kind()),
-                        expected: "lambda parameter",
-                    },
-                });
-            }
-        }
+    while !cur.check(&TokenKind::Arrow) {
+        params.push(parse_pattern(cur)?);
     }
     cur.bump();
     let body = parse_expr_bp(cur, 0)?;
@@ -252,7 +234,7 @@ fn parse_postfix(cur: &mut Cursor) -> Result<Expr, Error> {
     Ok(e)
 }
 
-fn looks_like_kwargs(cur: &Cursor) -> bool {
+pub(super) fn looks_like_kwargs(cur: &Cursor) -> bool {
     matches!(cur.peek_n(1), Some(TokenKind::LowerIdent(_)))
         && matches!(cur.peek_n(2), Some(TokenKind::Equals))
 }

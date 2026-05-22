@@ -610,31 +610,31 @@ impl Printer {
 
     fn write_pattern(&mut self, pat: &Pattern) {
         match &pat.node {
-            PatternKind::Wildcard => self.push("_"),
+            PatternKind::Wildcard => self.push("(wild)"),
             PatternKind::Var(n) => {
-                self.push("(var ");
+                self.push("(pvar ");
                 self.push(n);
                 self.push(")");
             }
             PatternKind::Lit(l) => match l {
                 LitPat::Int(n) => {
-                    self.push("(int ");
+                    self.push("(plit (int ");
                     self.push(&n.to_string());
-                    self.push(")");
+                    self.push("))");
                 }
                 LitPat::Float(f) => {
-                    self.push("(float ");
+                    self.push("(plit (float ");
                     self.push(&f.to_string());
-                    self.push(")");
+                    self.push("))");
                 }
                 LitPat::Str(s) => {
-                    self.push("(str \"");
+                    self.push("(plit (str \"");
                     self.push(s);
-                    self.push("\")");
+                    self.push("\"))");
                 }
             },
             PatternKind::Ctor { name, args } => {
-                self.push("(");
+                self.push("(pctor ");
                 self.push(name);
                 for a in args {
                     self.push(" ");
@@ -643,10 +643,10 @@ impl Printer {
                 self.push(")");
             }
             PatternKind::Record { type_name, fields } => {
-                self.push("(record ");
+                self.push("(precord ");
                 self.push(type_name);
                 for fp in fields {
-                    self.push(" (= ");
+                    self.push(" (pf ");
                     self.push(&fp.field);
                     self.push(" ");
                     self.write_pattern(&fp.pattern);
@@ -655,7 +655,7 @@ impl Printer {
                 self.push(")");
             }
             PatternKind::Tuple(pats) => {
-                self.push("(tuple");
+                self.push("(ptuple");
                 for p in pats {
                     self.push(" ");
                     self.write_pattern(p);
@@ -663,7 +663,7 @@ impl Printer {
                 self.push(")");
             }
             PatternKind::List(pats) => {
-                self.push("(list-pat");
+                self.push("(plist");
                 for p in pats {
                     self.push(" ");
                     self.write_pattern(p);
@@ -775,6 +775,18 @@ impl fmt::Display for ExprKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut p = Printer::new();
         p.write_expr_kind(self);
+        f.write_str(&p.out)
+    }
+}
+
+impl fmt::Display for PatternKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut p = Printer::new();
+        let fake = Spanned {
+            span: crate::span::Span::new(0, 0),
+            node: self.clone(),
+        };
+        p.write_pattern(&fake);
         f.write_str(&p.out)
     }
 }
