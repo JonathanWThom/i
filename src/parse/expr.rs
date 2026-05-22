@@ -1,3 +1,4 @@
+use super::binding::parse_block;
 use super::cursor::Cursor;
 use super::pat::parse_pattern;
 use super::postfix::parse_call;
@@ -31,7 +32,13 @@ fn parse_lambda(cur: &mut Cursor) -> Result<Expr, Error> {
         params.push(parse_pattern(cur)?);
     }
     cur.bump();
-    let body = parse_expr_bp(cur, 0)?;
+    let body = if cur.check(&TokenKind::Newline) {
+        cur.bump();
+        cur.expect(TokenKind::Indent, "indented lambda body")?;
+        parse_block(cur)?
+    } else {
+        parse_expr_bp(cur, 0)?
+    };
     let span = start.merge(body.span);
     Ok(Spanned {
         span,

@@ -47,6 +47,7 @@
 - [x] Module header, use, and top-level dispatch (Task 26)
 - [x] AST/parser refactor for file length and modularity (Task 26.5)
 - [x] Parser error tests (Task 27)
+- [x] Multi-line lambda body (Task 27.5)
 - [ ] Parser corpus snapshots (Task 28)
 - [ ] Pretty printer + round-trip property test (Tasks 29-30)
 - [ ] Document testing strategy (Task 31)

@@ -83,3 +83,11 @@ fn and_higher_than_or() {
 fn not_prefix() {
     assert_eq!(p("not x"), "(not (var x))");
 }
+
+#[test]
+fn lambda_multiline_body() {
+    let got = p("x ->\n    y = x + 1\n    y\n");
+    assert!(got.starts_with("(lambda ((pvar x)) (block"), "got: {}", got);
+    assert!(got.contains("(let y (+ (var x) (int 1)))"), "got: {}", got);
+    assert!(got.contains("(var y)"), "got: {}", got);
+}

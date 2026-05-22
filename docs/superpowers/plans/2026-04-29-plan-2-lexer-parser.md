@@ -3056,6 +3056,82 @@ git commit -m "Plan 2 Task 27: parser error assertions"
 
 ---
 
+#### Task 27.5: Multi-line lambda body
+
+**Files:**
+- Modify: `src/parse/expr.rs`
+- Modify: `tests/parser_precedence.rs` (or add a focused test file)
+
+Task 18 only built the single-line lambda form (`x -> body`). The
+spec and `examples/03-shapes.i` onward use the indented-block form
+(`x ->\n    body...`). Task 28's corpus snapshots over `examples/`
+need this to parse — without it, examples 03–09 fail with
+"expected an expression, found Newline" at the arrow.
+
+Mirrors what `parse_binding` already does for `=` block bodies: if
+the token after `->` is `Newline`, consume it, expect `Indent`, and
+delegate to `parse_block`.
+
+- [ ] **Step 1: Write the failing test**
+
+In `tests/parser_precedence.rs`, add:
+
+```rust
+#[test]
+fn lambda_multiline_body() {
+    let src = "f = x ->\n    y = x + 1\n    y\n";
+    // Expect the lambda body to be a Block expression containing the
+    // two items, not an Unexpected-token error.
+    let got = p_file(src);
+    assert!(got.contains("(lambda"), "got: {}", got);
+    assert!(got.contains("(block"), "got: {}", got);
+}
+```
+
+Or a focused snippet — whatever format matches existing precedence
+tests. The shape is what matters: a lambda whose body is a block.
+
+- [ ] **Step 2: Extend `parse_lambda`**
+
+```rust
+fn parse_lambda(cur: &mut Cursor) -> Result<Expr, Error> {
+    let start = cur.peek().span;
+    let mut params: Vec<Pattern> = Vec::new();
+    while !cur.check(&TokenKind::Arrow) {
+        params.push(parse_pattern(cur)?);
+    }
+    cur.bump(); // Arrow
+    let body = if cur.check(&TokenKind::Newline) {
+        cur.bump();
+        cur.expect(TokenKind::Indent, "indented lambda body")?;
+        parse_block(cur)?
+    } else {
+        parse_expr_bp(cur, 0)?
+    };
+    let span = start.merge(body.span);
+    Ok(Spanned { span, node: ExprKind::Lambda { params, body: Box::new(body) } })
+}
+```
+
+`parse_block` lives in `src/parse/binding.rs` and is already
+`pub(super)`. Add `use super::binding::parse_block;` at the top
+of `src/parse/expr.rs`.
+
+- [ ] **Step 3: Run tests**
+
+Run: `cargo test`
+Expected: all PASS — including the new lambda test and every
+existing test.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/parse/expr.rs tests/parser_precedence.rs
+git commit -m "Plan 2 Task 27.5: multi-line lambda body"
+```
+
+---
+
 #### Task 28: Parser corpus snapshot tests
 
 **Files:**
