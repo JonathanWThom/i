@@ -1,3 +1,4 @@
+use i_lang::error::ErrorKind;
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
@@ -20,4 +21,15 @@ fn collects_multiple_top_level() {
     assert!(names.contains(&"x"));
     assert!(names.contains(&"y"));
     assert!(names.contains(&"Pair"));
+}
+
+#[test]
+fn duplicate_value_binding() {
+    let src = "module M\n    expose x\n\nx = 1\nx = 2\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::DuplicateDefinition { name, .. } if name == "x"
+    )));
 }

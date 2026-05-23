@@ -1,22 +1,56 @@
 use super::types::{DefId, DefInfo, DefKind, Resolution};
 use crate::ast::{Decl, DeclKind, File};
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 use crate::span::Span;
+use std::collections::HashMap;
 
 pub(super) fn collect_top_level(file: &File, res: &mut Resolution) -> Vec<Error> {
-    let errors = Vec::new();
+    let mut errors = Vec::new();
+    let mut value_seen: HashMap<String, Span> = HashMap::new();
+    let mut type_seen: HashMap<String, Span> = HashMap::new();
     for decl in &file.decls {
-        collect_decl(decl, res);
+        collect_decl(decl, res, &mut value_seen, &mut type_seen, &mut errors);
     }
     errors
 }
 
-fn collect_decl(decl: &Decl, res: &mut Resolution) {
+fn collect_decl(
+    decl: &Decl,
+    res: &mut Resolution,
+    value_seen: &mut HashMap<String, Span>,
+    type_seen: &mut HashMap<String, Span>,
+    errors: &mut Vec<Error>,
+) {
     match &decl.node {
-        DeclKind::Binding { name, .. } => push_def(res, name.clone(), DefKind::Value, decl.span),
-        DeclKind::TypeDecl { name, .. } => push_def(res, name.clone(), DefKind::Type, decl.span),
-        DeclKind::TraitDecl { name, .. } => push_def(res, name.clone(), DefKind::Trait, decl.span),
+        DeclKind::Binding { name, value, .. } => {
+            if value.is_some() {
+                check_dup(name, decl.span, value_seen, errors);
+                push_def(res, name.clone(), DefKind::Value, decl.span);
+            }
+        }
+        DeclKind::TypeDecl { name, .. } => {
+            check_dup(name, decl.span, type_seen, errors);
+            push_def(res, name.clone(), DefKind::Type, decl.span);
+        }
+        DeclKind::TraitDecl { name, .. } => {
+            check_dup(name, decl.span, type_seen, errors);
+            push_def(res, name.clone(), DefKind::Trait, decl.span);
+        }
         DeclKind::ImplDecl { .. } | DeclKind::Use { .. } => {}
+    }
+}
+
+fn check_dup(name: &str, span: Span, seen: &mut HashMap<String, Span>, errors: &mut Vec<Error>) {
+    if let Some(first) = seen.get(name) {
+        errors.push(Error {
+            span,
+            kind: ErrorKind::DuplicateDefinition {
+                name: name.to_string(),
+                first_span: *first,
+            },
+        });
+    } else {
+        seen.insert(name.to_string(), span);
     }
 }
 

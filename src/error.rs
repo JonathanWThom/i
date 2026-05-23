@@ -23,4 +23,8 @@ pub enum ErrorKind {
         expected: &'static str,
     },
     ChainedComparison,
+    DuplicateDefinition {
+        name: String,
+        first_span: Span,
+    },
 }
