@@ -86,3 +86,17 @@ fn use_cherry_pick_brings_names_unqualified() {
     });
     assert!(found);
 }
+
+#[test]
+fn module_cycle_detected() {
+    let a = parse_module("module A\n    expose x\n\nuse B\n\nx = 1\n");
+    let b = parse_module("module B\n    expose y\n\nuse A\n\ny = 2\n");
+    let mut set: ModuleSet = HashMap::new();
+    set.insert(vec!["A".into()], a);
+    set.insert(vec!["B".into()], b);
+    let errs = resolve_project(&set).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(&e.kind, ErrorKind::ModuleCycle { .. }))
+    );
+}

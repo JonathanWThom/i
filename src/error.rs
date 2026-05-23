@@ -36,4 +36,7 @@ pub enum ErrorKind {
     UnknownModule {
         path: Vec<String>,
     },
+    ModuleCycle {
+        members: Vec<Vec<String>>,
+    },
 }
