@@ -39,4 +39,8 @@ pub enum ErrorKind {
     ModuleCycle {
         members: Vec<Vec<String>>,
     },
+    NotExposed {
+        module: Vec<String>,
+        name: String,
+    },
 }

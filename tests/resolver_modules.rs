@@ -88,6 +88,23 @@ fn use_cherry_pick_brings_names_unqualified() {
 }
 
 #[test]
+fn cherry_pick_unexposed_is_error() {
+    let lib = parse_module(
+        "module Geometry\n    expose distance\n\nsquare = x -> x\ndistance = a -> a\n",
+    );
+    let app =
+        parse_module("module Main\n    expose main\n\nuse Geometry (square)\n\nmain = square\n");
+    let mut set: ModuleSet = HashMap::new();
+    set.insert(vec!["Geometry".into()], lib);
+    set.insert(vec!["Main".into()], app);
+    let errs = resolve_project(&set).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::NotExposed { name, .. } if name == "square"
+    )));
+}
+
+#[test]
 fn module_cycle_detected() {
     let a = parse_module("module A\n    expose x\n\nuse B\n\nx = 1\n");
     let b = parse_module("module B\n    expose y\n\nuse A\n\ny = 2\n");

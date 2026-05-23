@@ -39,6 +39,24 @@ pub(super) fn collect_imports(file: &File, set: &ModuleSet, errors: &mut Vec<Err
     imp
 }
 
+pub(super) fn validate_cherries(imports: &Imports, set: &ModuleSet, errors: &mut Vec<Error>) {
+    for (module, original) in imports.cherries.values() {
+        let Some(src_file) = set.get(module) else {
+            continue;
+        };
+        let exposed = super::module_set::exports_of(src_file);
+        if !exposed.contains(original) {
+            errors.push(Error {
+                span: Span::new(0, 0),
+                kind: ErrorKind::NotExposed {
+                    module: module.clone(),
+                    name: original.clone(),
+                },
+            });
+        }
+    }
+}
+
 #[derive(Default)]
 pub(super) struct ScopeStack {
     frames: Vec<Vec<(String, LocalId)>>,

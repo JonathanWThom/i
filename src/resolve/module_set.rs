@@ -1,8 +1,21 @@
 use super::types::{ModulePath, Resolution};
-use crate::ast::{DeclKind, File};
+use crate::ast::{DeclKind, Expose, File};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 use std::collections::{HashMap, HashSet};
+
+pub(super) fn exports_of(file: &File) -> Vec<String> {
+    let Some(h) = &file.module else {
+        return Vec::new();
+    };
+    h.exposes
+        .iter()
+        .map(|e| match e {
+            Expose::Value(n) => n.clone(),
+            Expose::Type { name, .. } => name.clone(),
+        })
+        .collect()
+}
 
 pub type ModuleSet = HashMap<ModulePath, File>;
 pub type ProjectResolution = HashMap<ModulePath, Resolution>;

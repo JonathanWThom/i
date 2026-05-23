@@ -18,6 +18,7 @@ pub(crate) fn resolve_file_in_set(file: &File, set: &ModuleSet) -> Result<Resolu
     let mut res = Resolution::default();
     let mut errors = scope::collect_top_level(file, &mut res);
     let imports = scope::collect_imports(file, set, &mut errors);
+    scope::validate_cherries(&imports, set, &mut errors);
     walker::walk_file(file, &mut res, &mut errors, &imports);
     if errors.is_empty() {
         Ok(res)
