@@ -28,6 +28,36 @@ fn string_literal_has_type_string() {
 }
 
 #[test]
+fn applied_identity_has_arg_type() {
+    let src = "\
+id = x -> x
+n = id 42
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let n = res.defs.iter().find(|d| d.name == "n").unwrap();
+    assert_eq!(typing.schemes[&n.id].ty, Ty::Prim(PrimTy::Int));
+}
+
+#[test]
+fn arity_mismatch_in_call_reports_error() {
+    // `id` takes one arg; pass two (comma-separated — `id 1 2` parses as
+    // `id (1 2)` and produces a TypeMismatch from calling Int as a function).
+    let src = "\
+id = x -> x
+n = id 1, 2
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e.kind, i_lang::error::ErrorKind::ArityMismatch { .. }))
+    );
+}
+
+#[test]
 fn identity_lambda_has_fun_type() {
     let src = "id = x -> x\n";
     let file = parse(&lex(src).unwrap()).unwrap();

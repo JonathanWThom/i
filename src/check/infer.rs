@@ -1,6 +1,6 @@
 use crate::ast::{Expr, ExprKind, Pattern, PatternKind};
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
-use crate::check::unify::apply_subst;
+use crate::check::unify::{apply_subst, unify};
 use crate::error::Error;
 use crate::resolve::{DefId, LocalId, Resolution, ResolvedName};
 use crate::span::Span;
@@ -87,6 +87,17 @@ impl<'a> Infer<'a> {
                 }
                 let result_ty = self.infer_expr(body);
                 Ty::Fun(param_tys, Box::new(result_ty))
+            }
+            ExprKind::Call { func, args } => {
+                let fn_ty = self.infer_expr(func);
+                let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
+                let result_v = self.fresh();
+                let expected = Ty::Fun(arg_tys, Box::new(Ty::Var(result_v)));
+                if let Err(err) = unify(&mut self.subst, &fn_ty, &expected) {
+                    self.errors
+                        .push(crate::check::unify_error_to_error(func.span, err));
+                }
+                Ty::Var(result_v)
             }
             _ => Ty::Var(self.fresh()),
         };
