@@ -5,6 +5,19 @@ use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
 
 #[test]
+fn alias_binding_takes_referent_type() {
+    let src = "\
+n = 42
+m = n
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let m = res.defs.iter().find(|d| d.name == "m").unwrap();
+    assert_eq!(typing.schemes[&m.id].ty, Ty::Prim(PrimTy::Int));
+}
+
+#[test]
 fn mutual_top_level_recursion_typechecks() {
     let src = "\
 a = b
