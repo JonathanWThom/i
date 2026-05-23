@@ -26,8 +26,8 @@ priorities are:
 
 ## Status
 
-Docs are complete; lexer is complete and snapshot-tested; the parser is in
-progress. For the live state — phases, current
+Docs are complete; lexer, parser, and name resolution are complete and
+tested. Type checker is next. For the live state — phases, current
 plan, task-level checkboxes — see
 [`docs/superpowers/plans/PROGRESS.md`](docs/superpowers/plans/PROGRESS.md).
 

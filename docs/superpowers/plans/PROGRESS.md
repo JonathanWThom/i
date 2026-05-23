@@ -54,8 +54,17 @@
 - [x] Round-trip property test (Task 30)
 - [x] Document testing strategy (Task 31)
 
+## Phase 3: Implementation — Plan 3 (name resolution) DONE
+- [x] Resolver scaffold + data model (Task 1)
+- [x] Top-level collection + duplicate detection (Tasks 2-3)
+- [x] Var, Ctor, expression walker (Tasks 4-5)
+- [x] Locals: lambda, patterns, blocks, self (Tasks 6-9)
+- [x] Type expressions (Task 10)
+- [x] Cross-module: use, cherry, alias, cycles, exposure (Tasks 11-15)
+- [x] Corpus + integration tests (Tasks 16-17)
+- [x] Resolver documentation (Task 18)
+
 ## Later v1 phases
-- [ ] Name resolution — Plan 3 (TBD)
 - [ ] Type checker — Plan 4 (TBD)
 - [ ] Interpreter — Plan 5 (TBD)
 - [ ] Stdlib — Plan 6 (TBD)
