@@ -54,4 +54,6 @@ pub enum ErrorKind {
         expected: usize,
         found: usize,
     },
+    EffectsNotYetImplemented,
+    TuplesNotYetImplemented,
 }

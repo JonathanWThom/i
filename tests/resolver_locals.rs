@@ -147,12 +147,12 @@ fn self_not_in_scope_outside_method() {
 
 #[test]
 fn type_in_annotation_unresolved() {
-    let src = "module M\n    expose Point\n\ntype Point\n    x : Float\n";
+    let src = "module M\n    expose Point\n\ntype Point\n    x : Frobnication\n";
     let file = parse(&lex(src).unwrap()).unwrap();
     let errs = resolve_file(&file).unwrap_err();
     assert!(errs.iter().any(|e| matches!(
         &e.kind,
-        ErrorKind::Unresolved { name } if name == "Float"
+        ErrorKind::Unresolved { name } if name == "Frobnication"
     )));
 }
 

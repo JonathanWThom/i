@@ -169,6 +169,11 @@ impl<'a> Walker<'a> {
             );
             return;
         }
+        if matches!(name, "Int" | "Float" | "String" | "Bool" | "Unit") {
+            // Primitive types are recognised by the type checker via lower_type;
+            // no Resolution entry needed (no DefId, no import).
+            return;
+        }
         self.errors.push(Error {
             span,
             kind: ErrorKind::Unresolved {

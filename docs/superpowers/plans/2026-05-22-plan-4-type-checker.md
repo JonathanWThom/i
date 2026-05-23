@@ -18,7 +18,9 @@ These were open questions before the plan; they're resolved here so they don't r
 
 2. **Output is a side-table, not a typed AST.** Mirrors Plan 3. `Typing.expr_types: HashMap<Span, Ty>` records the resolved type at each expression site after final substitution. `Typing.pattern_types` does the same for patterns. `Typing.schemes` holds per-`DefId` generalised schemes. Downstream passes (interpreter, code gen) read by span and ID. No AST mutation, no `TypedExpr` duplication.
 
-3. **Top-level generalisation only.** Mutual recursion within a file is supported: phase 1 binds each top-level value def to a fresh tyvar `Scheme { vars: [], ty: Var(α_i) }`; phase 2 infers each body and unifies its inferred type with `Var(α_i)`; phase 3 walks the file and generalises each binding's type (`forall (free-vars-of-ty − free-vars-of-env) . ty`). Block let-bindings are *monomorphic* — their types are inferred but not generalised. This matches Plan 3's "Plan 4 owns let-poly" promise and the spec (`types.md § 2`).
+3. **Top-level generalisation only, SCC-by-SCC.** Top-level value bindings are processed in strongly-connected-component order: dependency-sort by which other top-level defs each body references (via the resolver's `refs`), compute SCCs with Tarjan's algorithm, and visit them in topological order. For each SCC: (a) pre-declare a fresh tyvar `Scheme { vars: [], ty: Var(α_i) }` for every binding in the SCC; (b) apply user annotations (lower their `ast::Type` and unify against the tyvar) before inference; (c) infer each body and unify with its tyvar; (d) resolve the schemes through the final substitution; (e) generalise — quantify free tyvars not pinned by other (already-generalised) schemes. Later SCCs see polymorphic schemes for earlier ones, so `id = x -> x; n = id 1; s = id "hi"` typechecks (id is generalised before being used at two types). Mutually recursive bindings land in the same SCC and stay monomorphic *within* that SCC (the standard "no polymorphic recursion" cut). Block let-bindings remain monomorphic — their types are inferred but not generalised. This matches Plan 3's "Plan 4 owns let-poly" promise and the spec (`types.md § 2`).
+
+   *Amendment notice:* the original phrasing here ("phase 2 infers each body, phase 3 generalises the whole file") could not deliver let-polymorphism across top-level uses — each use of `id` during phase 2 would share the same un-generalised tyvar, pinning it to the first use's argument type. SCC-by-SCC processing is the standard ML fix and was made explicit during Task 11 execution.
 
 4. **No type defaulting.** If a top-level binding's type still contains a free variable after generalisation and the variable is not abstracted (because it appears in a position that escapes), that's an `AmbiguousType` error. `xs = []` at module scope is rejected unless annotated. The spec (`types.md § 2`) is explicit: the user writes the annotation, the checker doesn't guess.
 
@@ -1290,12 +1292,15 @@ Fold the plan-amendment diff (test source rewrite, resolver-tweak note) into the
 
 ---
 
-## Task 11: Generalisation and user-written type annotations
+## Task 11: Generalisation, SCC-based top-level inference, and type annotations
 
 **Files:**
-- Modify: `src/check/mod.rs` (phase 3: generalise top-level)
-- Modify: `src/check/infer.rs` (add `lower_type` for annotation parsing — already referenced in Task 10)
+- Modify: `src/check/mod.rs` (replace single-phase-2 with SCC-by-SCC processing + generalisation; merge sig-only and value-only bindings by name for multi-line annotations)
+- Modify: `src/check/infer.rs` (add `lower_type` for annotation parsing; add `free_vars` and `generalise` helpers)
+- Modify: `src/error.rs` (add `EffectsNotYetImplemented`, `TuplesNotYetImplemented`)
 - Test: `tests/check_bindings.rs` (add)
+
+**Amendment notice (scope expanded during execution):** The original Task 11 plan assumed simple "phase 2 over the whole file, phase 3 generalises at the end" — but as traced during Task 11 execution, that architecture fixes `id`'s tyvar to the type of its first use, so `n = id 1; s = id "hi"` fails. Bundling SCC-based top-level inference in here (rather than a follow-up Task 11.5) lands the polymorphism story in one commit. Multi-line annotations (`double : Int -> Int` on one line, `double = n -> n` on the next — two separate decls per the parser) get the same merge-by-name treatment as inline annotations, since both forms are spec-canonical.
 
 - [ ] **Step 1: Write the failing test**
 

@@ -61,6 +61,55 @@ impl<'a> Infer<'a> {
         apply_subst(&scheme.ty, &s)
     }
 
+    pub fn lower_type(&mut self, t: &crate::ast::Type) -> Ty {
+        use crate::ast::{EffectRow, TypeKind};
+        match &t.node {
+            TypeKind::Var(_) => Ty::Var(self.fresh()),
+            TypeKind::Named { name, args } => match name.as_str() {
+                "Int" => Ty::Prim(PrimTy::Int),
+                "Float" => Ty::Prim(PrimTy::Float),
+                "String" => Ty::Prim(PrimTy::String),
+                "Bool" => Ty::Prim(PrimTy::Bool),
+                "Unit" => Ty::Prim(PrimTy::Unit),
+                _ => match self.res.defs.iter().find(|d| &d.name == name) {
+                    Some(d) => {
+                        let id = d.id;
+                        Ty::Con(id, args.iter().map(|a| self.lower_type(a)).collect())
+                    }
+                    None => {
+                        self.errors.push(Error {
+                            span: t.span,
+                            kind: crate::error::ErrorKind::Unresolved { name: name.clone() },
+                        });
+                        Ty::Var(self.fresh())
+                    }
+                },
+            },
+            TypeKind::Function {
+                params,
+                effect,
+                result,
+            } => {
+                if matches!(effect, Some(EffectRow::Named(_))) {
+                    self.errors.push(Error {
+                        span: t.span,
+                        kind: crate::error::ErrorKind::EffectsNotYetImplemented,
+                    });
+                }
+                let ps: Vec<Ty> = params.iter().map(|p| self.lower_type(p)).collect();
+                let r = self.lower_type(result);
+                Ty::Fun(ps, Box::new(r))
+            }
+            TypeKind::Tuple(_) => {
+                self.errors.push(Error {
+                    span: t.span,
+                    kind: crate::error::ErrorKind::TuplesNotYetImplemented,
+                });
+                Ty::Var(self.fresh())
+            }
+        }
+    }
+
     pub fn infer_expr(&mut self, e: &Expr) -> Ty {
         let ty = match &e.node {
             ExprKind::IntLit(_) => Ty::Prim(PrimTy::Int),

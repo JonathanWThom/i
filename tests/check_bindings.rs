@@ -47,6 +47,60 @@ f =
 }
 
 #[test]
+fn identity_is_generalised_to_forall() {
+    let src = "id = x -> x\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let id = res.defs.iter().find(|d| d.name == "id").unwrap();
+    let scheme = &typing.schemes[&id.id];
+    assert_eq!(
+        scheme.vars.len(),
+        1,
+        "expected one quantified var, got {:?}",
+        scheme
+    );
+    match &scheme.ty {
+        Ty::Fun(params, result) => {
+            assert_eq!(params.len(), 1);
+            assert_eq!(&params[0], result.as_ref());
+            assert!(matches!(params[0], Ty::Var(_)));
+        }
+        other => panic!("expected Fun, got {:?}", other),
+    }
+}
+
+#[test]
+fn polymorphic_top_level_instantiates_at_each_use() {
+    let src = "\
+id = x -> x
+n = id 1
+s = id \"hi\"
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let n = res.defs.iter().find(|d| d.name == "n").unwrap();
+    let s = res.defs.iter().find(|d| d.name == "s").unwrap();
+    assert_eq!(typing.schemes[&n.id].ty, Ty::Prim(PrimTy::Int));
+    assert_eq!(typing.schemes[&s.id].ty, Ty::Prim(PrimTy::String));
+}
+
+#[test]
+fn annotation_pins_inferred_type() {
+    let src = "\
+double : Int -> Int
+double = n -> n
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let d = res.defs.iter().find(|d| d.name == "double").unwrap();
+    let expected = Ty::Fun(vec![Ty::Prim(PrimTy::Int)], Box::new(Ty::Prim(PrimTy::Int)));
+    assert_eq!(typing.schemes[&d.id].ty, expected);
+}
+
+#[test]
 fn block_local_is_monomorphic() {
     // id bound inside a block is monomorphic — its tyvar fixes after the first
     // call, so a second call with a different arg type errors.
