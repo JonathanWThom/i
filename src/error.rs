@@ -27,4 +27,7 @@ pub enum ErrorKind {
         name: String,
         first_span: Span,
     },
+    Unresolved {
+        name: String,
+    },
 }
