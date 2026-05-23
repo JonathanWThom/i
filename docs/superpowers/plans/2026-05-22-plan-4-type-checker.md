@@ -759,11 +759,18 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
     }
 
     // Phase 2: infer each body and unify with its pre-declared tyvar.
-    for (def_id, value, v) in pending {
+    for (_def_id, value, v) in &pending {
         let ty = infer.infer_expr(value);
-        if let Err(e) = crate::check::unify::unify(&mut infer.subst, &Ty::Var(v), &ty) {
+        if let Err(e) = crate::check::unify::unify(&mut infer.subst, &Ty::Var(*v), &ty) {
             infer.errors.push(unify_error_to_error(value.span, e));
         }
+    }
+    // Phase 2.5: resolve each scheme through the *final* substitution. Done
+    // outside the phase-2 loop because mutual recursion (e.g. `a = b; b = 1`)
+    // only pins later bindings' tyvars after their own iteration completes;
+    // resolving inside the loop would freeze `a` as `Var(α_b)` before
+    // `α_b → Int` is added on the next iteration.
+    for (def_id, _value, v) in pending {
         let resolved = crate::check::unify::apply_subst(&Ty::Var(v), &infer.subst);
         infer.schemes.insert(
             def_id,

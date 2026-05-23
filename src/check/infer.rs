@@ -2,12 +2,13 @@ use crate::ast::{Expr, ExprKind};
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::apply_subst;
 use crate::error::Error;
-use crate::resolve::{DefId, LocalId};
+use crate::resolve::{DefId, LocalId, Resolution, ResolvedName};
 use crate::span::Span;
 use std::collections::HashMap;
 
-#[derive(Debug, Default)]
-pub struct Infer {
+#[derive(Debug)]
+pub struct Infer<'a> {
+    pub res: &'a Resolution,
     pub subst: Subst,
     pub locals: HashMap<LocalId, Ty>,
     pub schemes: HashMap<DefId, Scheme>,
@@ -17,9 +18,18 @@ pub struct Infer {
     pattern_types: HashMap<Span, Ty>,
 }
 
-impl Infer {
-    pub fn new() -> Self {
-        Self::default()
+impl<'a> Infer<'a> {
+    pub fn new(res: &'a Resolution) -> Self {
+        Self {
+            res,
+            subst: Subst::new(),
+            locals: HashMap::new(),
+            schemes: HashMap::new(),
+            errors: Vec::new(),
+            next_var: 0,
+            expr_types: HashMap::new(),
+            pattern_types: HashMap::new(),
+        }
     }
 
     pub fn fresh(&mut self) -> TyVarId {
@@ -36,15 +46,34 @@ impl Infer {
         self.pattern_types.insert(span, ty);
     }
 
+    pub fn instantiate(&mut self, scheme: Scheme) -> Ty {
+        let mut s: Subst = HashMap::new();
+        for v in &scheme.vars {
+            let fresh = self.fresh();
+            s.insert(*v, Ty::Var(fresh));
+        }
+        apply_subst(&scheme.ty, &s)
+    }
+
     pub fn infer_expr(&mut self, e: &Expr) -> Ty {
         let ty = match &e.node {
             ExprKind::IntLit(_) => Ty::Prim(PrimTy::Int),
             ExprKind::FloatLit(_) => Ty::Prim(PrimTy::Float),
             ExprKind::StringLit(_) => Ty::Prim(PrimTy::String),
-            _ => {
-                let v = self.fresh();
-                Ty::Var(v)
-            }
+            ExprKind::Var(_) => match self.res.refs.get(&e.span) {
+                Some(ResolvedName::TopLevel(def_id)) => match self.schemes.get(def_id).cloned() {
+                    Some(scheme) => self.instantiate(scheme),
+                    None => Ty::Var(self.fresh()),
+                },
+                Some(ResolvedName::Local(local_id)) => self
+                    .locals
+                    .get(local_id)
+                    .cloned()
+                    .unwrap_or_else(|| Ty::Var(self.fresh())),
+                _ => Ty::Var(self.fresh()),
+            },
+            ExprKind::Ctor(_) => Ty::Var(self.fresh()),
+            _ => Ty::Var(self.fresh()),
         };
         self.record_expr_type(e.span, ty.clone());
         ty
@@ -80,7 +109,8 @@ mod tests {
 
     #[test]
     fn fresh_returns_distinct_ids() {
-        let mut infer = Infer::new();
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
         let a = infer.fresh();
         let b = infer.fresh();
         assert_ne!(a, b);
@@ -88,17 +118,13 @@ mod tests {
 
     #[test]
     fn record_expr_type_stores_and_applies_subst() {
-        use crate::check::types::{PrimTy, Ty, TyVarId};
-        use crate::span::Span;
-
-        let mut infer = Infer::new();
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
         let v = infer.fresh();
         infer.subst.insert(v, Ty::Prim(PrimTy::Int));
         let s = Span::new(0, 1);
         infer.record_expr_type(s, Ty::Var(v));
         let typing = infer.into_typing();
         assert_eq!(typing.expr_types.get(&s), Some(&Ty::Prim(PrimTy::Int)));
-        // silence unused import on TyVarId
-        let _ = TyVarId(0);
     }
 }
