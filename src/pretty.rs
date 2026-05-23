@@ -375,8 +375,12 @@ impl Printer {
             },
             PatternKind::Ctor { name, args } => {
                 self.push(name);
-                for a in args {
-                    self.push(" ");
+                for (i, a) in args.iter().enumerate() {
+                    if i == 0 {
+                        self.push(" ");
+                    } else {
+                        self.push(", ");
+                    }
                     self.write_pattern(a);
                 }
             }
@@ -394,12 +398,14 @@ impl Printer {
                 self.push(")");
             }
             PatternKind::Tuple(items) => {
+                self.push("(");
                 for (i, it) in items.iter().enumerate() {
                     if i > 0 {
                         self.push(", ");
                     }
                     self.write_pattern(it);
                 }
+                self.push(")");
             }
             PatternKind::List(items) => {
                 self.push("[");
