@@ -1,0 +1,10 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/lambda-shadow.i
+---
+defs:
+  DefId(0) x (Value)
+  DefId(1) f (Value)
+refs:
+  38..39 -> Local(LocalId(0))

@@ -1,0 +1,14 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/sum-with-methods.i
+---
+defs:
+  DefId(0) Int (Type)
+  DefId(1) Pair (Type)
+refs:
+  43..46 -> TopLevel(DefId(0))
+  66..69 -> TopLevel(DefId(0))
+  78..81 -> TopLevel(DefId(0))
+  92..96 -> Local(LocalId(0))
+  101..105 -> Local(LocalId(0))

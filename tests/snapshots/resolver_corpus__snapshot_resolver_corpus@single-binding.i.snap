@@ -1,0 +1,8 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/single-binding.i
+---
+defs:
+  DefId(0) x (Value)
+refs:

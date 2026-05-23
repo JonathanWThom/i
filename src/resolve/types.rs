@@ -39,3 +39,19 @@ pub struct Resolution {
     pub defs: Vec<DefInfo>,
     pub refs: HashMap<Span, ResolvedName>,
 }
+
+impl std::fmt::Display for Resolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "defs:")?;
+        for d in &self.defs {
+            writeln!(f, "  {:?} {} ({:?})", d.id, d.name, d.kind)?;
+        }
+        writeln!(f, "refs:")?;
+        let mut entries: Vec<_> = self.refs.iter().collect();
+        entries.sort_by_key(|(s, _)| (s.start, s.end));
+        for (span, name) in entries {
+            writeln!(f, "  {:?} -> {:?}", span, name)?;
+        }
+        Ok(())
+    }
+}

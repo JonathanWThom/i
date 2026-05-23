@@ -1,0 +1,14 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/method-self.i
+---
+defs:
+  DefId(0) Float (Type)
+  DefId(1) Point (Type)
+refs:
+  46..51 -> TopLevel(DefId(0))
+  72..77 -> TopLevel(DefId(0))
+  86..91 -> TopLevel(DefId(0))
+  104..108 -> Local(LocalId(0))
+  113..117 -> Local(LocalId(0))

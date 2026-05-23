@@ -1,0 +1,17 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/ctor-resolve.i
+---
+defs:
+  DefId(0) Float (Type)
+  DefId(1) Shape (Type)
+  DefId(2) Circle (Ctor { of_type: DefId(1) })
+  DefId(3) Rect (Ctor { of_type: DefId(1) })
+  DefId(4) make (Value)
+refs:
+  45..50 -> TopLevel(DefId(0))
+  91..96 -> TopLevel(DefId(0))
+  122..127 -> TopLevel(DefId(0))
+  145..150 -> TopLevel(DefId(0))
+  159..179 -> Ctor(DefId(2))

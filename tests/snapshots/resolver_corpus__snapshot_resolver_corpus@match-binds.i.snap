@@ -1,0 +1,15 @@
+---
+source: tests/resolver_corpus.rs
+expression: "format!(\"{}\", res)"
+input_file: tests/corpus/resolver/match-binds.i
+---
+defs:
+  DefId(0) Option (Type)
+  DefId(1) Some (Ctor { of_type: DefId(0) })
+  DefId(2) None (Ctor { of_type: DefId(0) })
+  DefId(3) f (Value)
+refs:
+  73..74 -> Local(LocalId(0))
+  89..95 -> Ctor(DefId(1))
+  99..100 -> Local(LocalId(1))
+  109..113 -> Ctor(DefId(2))
