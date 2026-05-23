@@ -1,0 +1,9 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/effect-row.i
+---
+(file
+  (sig shout (tfun (tnamed String) (eff IO) (tnamed Unit)))
+  (let shout (lambda ((pvar msg)) (block
+    (call (! (var print)) (var msg))))))

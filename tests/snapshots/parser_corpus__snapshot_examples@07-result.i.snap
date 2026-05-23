@@ -1,0 +1,17 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/07-result.i
+---
+(file
+  (module Main (expose-val main))
+  (use Std.Float (alias F))
+  (use Std.IO (cherry print))
+  (type ParseError
+    (variant BadNumber)
+    (variant OutOfRange))
+  (let bounded (lambda ((pvar s) (pvar lo) (pvar hi)) (block
+    (let n (call (. (ctor F) parse) (? (var s))))
+    (or (< (var n) (var lo)) (> (var n) (match (var hi) ((arm (pctor True) (call (ctor Error) (ctor OutOfRange))) (arm (pctor False) (call (ctor Ok) (var n))))))))))
+  (let main (block
+    (call (var bounded) (str "42") (int 0) (match (int 100) ((arm (pctor Ok (pvar n)) (call (! (var print)) (++ (str "got ") (call (var show) (var n))))) (arm (pctor Error (wild)) (call (! (var print)) (str "bad input")))))))))

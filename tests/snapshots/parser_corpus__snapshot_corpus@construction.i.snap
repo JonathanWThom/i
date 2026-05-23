@@ -1,0 +1,7 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/construction.i
+---
+(file
+  (let p (construct Point (kw x (int 3)) (kw y (int 4)))))

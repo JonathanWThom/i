@@ -1,0 +1,12 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/08-modules-lib.i
+---
+(file
+  (module Geometry (expose-type Point *) (expose-val distance))
+  (type Point
+    (field x (tnamed Float))
+    (field y (tnamed Float)))
+  (let distance (lambda ((pvar a) (pvar b)) (block
+    (^ (paren (+ (^ (paren (- (. (var a) x) (. (var b) x))) (int 2)) (^ (paren (- (. (var a) y) (. (var b) y))) (int 2)))) (float 0.5))))))

@@ -1,0 +1,9 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/01-hello.i
+---
+(file
+  (module Main (expose-val main))
+  (let main (block
+    (call (! (var print)) (str "hello, world")))))

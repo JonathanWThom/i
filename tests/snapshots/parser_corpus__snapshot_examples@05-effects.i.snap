@@ -1,0 +1,15 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/05-effects.i
+---
+(file
+  (module Main (expose-val main))
+  (let double (lambda ((pvar n)) (* (var n) (int 2))))
+  (let quadruple (lambda ((pvar n)) (call (var double) (paren (call (var double) (var n))))))
+  (let shout (lambda ((pvar n)) (block
+    (call (! (var print)) (++ (str "the number is ") (call (var show) (var n)))))))
+  (let main (block
+    (call (! (var print)) (str "starting"))
+    (call (var shout) (int 21))
+    (call (! (var print)) (str "done")))))

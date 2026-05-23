@@ -1,0 +1,11 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/04-list-map.i
+---
+(file
+  (module Main (expose-val main))
+  (let main (block
+    (let nums (list (int 1) (int 2) (int 3) (int 4) (int 5)))
+    (let doubled (call (. (var nums) map) (lambda ((pvar x)) (* (var x) (int 2)))))
+    (call (! (var print)) (++ (str "doubled: ") (call (var show) (var doubled)))))))

@@ -1,0 +1,16 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/09-effect-map.i
+---
+(file
+  (module Main (expose-val main))
+  (use Std.IO (cherry println))
+  (let double (lambda ((pvar n)) (* (var n) (int 2))))
+  (let doubled (call (. (list (int 1) (int 2) (int 3)) map) (var double)))
+  (let shout (lambda ((pvar n)) (block
+    (call (! (var println)) (++ (str "saw ") (call (var show) (var n))))
+    (var n))))
+  (let main (block
+    (call (. (list (int 4) (int 5) (int 6)) map) (var shout))
+    (call (! (var println)) (++ (str "doubled: ") (call (var show) (var doubled)))))))

@@ -1,0 +1,8 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/type-annotations.i
+---
+(file
+  (let x : (tnamed Int) (int 1))
+  (let y : (tnamed List (tnamed Int)) (list (int 1) (int 2) (int 3))))

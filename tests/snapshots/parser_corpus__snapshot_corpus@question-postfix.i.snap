@@ -1,0 +1,9 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/question-postfix.i
+---
+(file
+  (let double (block
+    (let n (call (var parseInt) (? (var s))))
+    (* (var n) (int 2)))))

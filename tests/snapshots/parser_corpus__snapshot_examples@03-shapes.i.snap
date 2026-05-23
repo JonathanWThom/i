@@ -1,0 +1,18 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/03-shapes.i
+---
+(file
+  (module Main (expose-val main))
+  (type Shape
+    (variant Circle
+      (field radius (tnamed Float)))
+    (variant Rect
+      (field width (tnamed Float))
+      (field height (tnamed Float))))
+  (let area (lambda ((pvar shape)) (block
+    (match (var shape) ((arm (pctor Circle (pvar r)) (* (float 3.14159) (^ (var r) (int 2)))) (arm (pctor Rect (pvar w) (pvar h)) (* (var w) (var h))))))))
+  (let main (block
+    (let s (construct Circle (kw radius (float 5))))
+    (call (! (var print)) (++ (str "area: ") (call (var show) (paren (call (var area) (var s)))))))))

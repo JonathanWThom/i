@@ -1,0 +1,10 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/lambda-multiline.i
+---
+(file
+  (let result (block
+    (call (. (var xs) fold) (var initial) (lambda ((pvar acc) (pvar x)) (block
+      (let cleaned (call (var clean) (var x)))
+      (call (. (var acc) append) (var cleaned))))))))

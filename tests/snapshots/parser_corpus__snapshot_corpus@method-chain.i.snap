@@ -1,0 +1,7 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/method-chain.i
+---
+(file
+  (let result (call (. (paren (call (. (var nums) map) (var double))) filter) (var pred))))

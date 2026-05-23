@@ -1,0 +1,7 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/record-update.i
+---
+(file
+  (let p2 (update (var p1) (kw x (int 5)))))

@@ -1,0 +1,12 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/02-greet.i
+---
+(file
+  (module Main (expose-val main))
+  (use Std.IO (cherry print readLine))
+  (let main (block
+    (call (! (var print)) (str "what's your name?"))
+    (let name (! (var readLine)))
+    (call (! (var print)) (++ (str "hi, ") (var name))))))

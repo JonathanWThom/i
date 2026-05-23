@@ -1,0 +1,6 @@
+type Shape
+    Circle
+        radius : Float
+    Rect
+        width : Float
+        height : Float

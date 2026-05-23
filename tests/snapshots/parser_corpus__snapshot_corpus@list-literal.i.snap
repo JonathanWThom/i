@@ -1,0 +1,8 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: tests/corpus/parser/list-literal.i
+---
+(file
+  (let xs (list (int 1) (int 2) (int 3)))
+  (let empty (list)))

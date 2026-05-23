@@ -1,0 +1,18 @@
+---
+source: tests/parser_corpus.rs
+expression: "format!(\"{}\", file)"
+input_file: examples/06-tree.i
+---
+(file
+  (module Main (expose-val main))
+  (type Tree a
+    (variant Leaf)
+    (variant Node
+      (field value (tvar a))
+      (field left (tnamed Tree (tvar a)))
+      (field right (tnamed Tree (tvar a)))))
+  (let count (lambda ((pvar tree)) (block
+    (match (var tree) ((arm (pctor Leaf) (int 0)) (arm (pctor Node (pvar v) (pvar l) (pvar r)) (+ (int 1) (call (var count) (+ (var l) (call (var count) (var r)))))))))))
+  (let main (block
+    (let t (construct Node (kw value (int 1)) (kw left (ctor Leaf)) (kw right (construct Node (kw value (int 2)) (kw left (ctor Leaf)) (kw right (ctor Leaf))))))
+    (call (! (var print)) (++ (str "count: ") (call (var show) (paren (call (var count) (var t)))))))))
