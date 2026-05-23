@@ -50,7 +50,8 @@
 - [x] Multi-line lambda body (Task 27.5)
 - [x] Lambda-as-arg, upper in use cherry (Task 27.6)
 - [x] Parser corpus snapshots (Task 28)
-- [ ] Pretty printer + round-trip property test (Tasks 29-30)
+- [x] Pretty printer (Task 29)
+- [ ] Round-trip property test (Task 30)
 - [ ] Document testing strategy (Task 31)
 
 ## Later v1 phases
