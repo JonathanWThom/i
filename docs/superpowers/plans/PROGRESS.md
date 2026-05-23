@@ -64,22 +64,27 @@
 - [x] Corpus + integration tests (Tasks 16-17)
 - [x] Resolver documentation (Task 18)
 
+## Phase 4: Implementation — Plan 4 (type checker, HM core) IN PROGRESS
+See [`2026-05-22-plan-4-type-checker.md`](2026-05-22-plan-4-type-checker.md). Scope: Hindley-Milner inference, records, sums, patterns, exhaustiveness, primitive operators, list literals. Defers traits, effects, totality, `?` operator to later plans.
+
 ## Later v1 phases
-- [ ] Type checker — Plan 4 (TBD)
-- [ ] Interpreter — Plan 5 (TBD)
-- [ ] Stdlib — Plan 6 (TBD)
-- [ ] Driver / CLI — Plan 7 (TBD)
-- [ ] Golden test harness — Plan 8 (TBD)
+- [ ] Traits + operator desugaring — Plan 5 (TBD)
+- [ ] Effects (IO/State/Env, HOF effect-polymorphism, `?`) — Plan 6 (TBD)
+- [ ] Totality / termination checking — Plan 7 (TBD)
+- [ ] Interpreter — Plan 8 (TBD)
+- [ ] Stdlib — Plan 9 (TBD)
+- [ ] Driver / CLI — Plan 10 (TBD)
+- [ ] Golden test harness — Plan 11 (TBD)
 
 ## After v1
-- [ ] Formatter (`i fmt`) — Plan 9 (TBD)
-- [ ] Bytecode VM (v2) — Plan 10 (TBD)
-- [ ] Native codegen (v3) — Plan 11 (TBD)
-- [ ] Language server — Plan 12 (TBD)
-- [ ] Editor plugins — Plan 13 (TBD)
-- [ ] REPL — Plan 14 (TBD)
-- [ ] Doc generator — Plan 15 (TBD)
-- [ ] Concurrency (actors) — Plan 16 (TBD)
-- [ ] Package manager — Plan 17 (TBD)
-- [ ] Stdlib expansion — Plan 18 (TBD)
-- [ ] String interpolation — Plan 19 (TBD)
+- [ ] Formatter (`i fmt`) — Plan 12 (TBD)
+- [ ] Bytecode VM (v2) — Plan 13 (TBD)
+- [ ] Native codegen (v3) — Plan 14 (TBD)
+- [ ] Language server — Plan 15 (TBD)
+- [ ] Editor plugins — Plan 16 (TBD)
+- [ ] REPL — Plan 17 (TBD)
+- [ ] Doc generator — Plan 18 (TBD)
+- [ ] Concurrency (actors) — Plan 19 (TBD)
+- [ ] Package manager — Plan 20 (TBD)
+- [ ] Stdlib expansion — Plan 21 (TBD)
+- [ ] String interpolation — Plan 22 (TBD)
