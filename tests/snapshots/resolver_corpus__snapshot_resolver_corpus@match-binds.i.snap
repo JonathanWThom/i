@@ -9,7 +9,9 @@ defs:
   DefId(2) None (Ctor { of_type: DefId(0) })
   DefId(3) f (Value)
 refs:
+  64..65 -> Local(LocalId(0))
   73..74 -> Local(LocalId(0))
   89..95 -> Ctor(DefId(1))
+  94..95 -> Local(LocalId(1))
   99..100 -> Local(LocalId(1))
   109..113 -> Ctor(DefId(2))

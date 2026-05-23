@@ -1,10 +1,16 @@
-use crate::ast::{Expr, ExprKind};
+use crate::ast::{Expr, ExprKind, Pattern, PatternKind};
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::apply_subst;
 use crate::error::Error;
 use crate::resolve::{DefId, LocalId, Resolution, ResolvedName};
 use crate::span::Span;
 use std::collections::HashMap;
+
+#[derive(Debug)]
+pub struct PatternResult {
+    pub ty: Ty,
+    pub bindings: Vec<LocalId>,
+}
 
 #[derive(Debug)]
 pub struct Infer<'a> {
@@ -73,10 +79,44 @@ impl<'a> Infer<'a> {
                 _ => Ty::Var(self.fresh()),
             },
             ExprKind::Ctor(_) => Ty::Var(self.fresh()),
+            ExprKind::Lambda { params, body } => {
+                let mut param_tys = Vec::with_capacity(params.len());
+                for p in params {
+                    let pr = self.infer_pattern(p);
+                    param_tys.push(pr.ty);
+                }
+                let result_ty = self.infer_expr(body);
+                Ty::Fun(param_tys, Box::new(result_ty))
+            }
             _ => Ty::Var(self.fresh()),
         };
         self.record_expr_type(e.span, ty.clone());
         ty
+    }
+
+    pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {
+        let v = self.fresh();
+        let ty = Ty::Var(v);
+        self.record_pattern_type(p.span, ty.clone());
+        match &p.node {
+            PatternKind::Var(_) => {
+                if let Some(ResolvedName::Local(lid)) = self.res.refs.get(&p.span) {
+                    self.locals.insert(*lid, ty.clone());
+                    return PatternResult {
+                        ty,
+                        bindings: vec![*lid],
+                    };
+                }
+                PatternResult {
+                    ty,
+                    bindings: vec![],
+                }
+            }
+            _ => PatternResult {
+                ty,
+                bindings: vec![],
+            },
+        }
     }
 
     pub fn into_typing(self) -> Typing {

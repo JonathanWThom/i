@@ -274,14 +274,17 @@ impl<'a> Walker<'a> {
     fn bind_pattern(&mut self, p: &Pattern) {
         match &p.node {
             PatternKind::Wildcard | PatternKind::Lit(_) => {}
-            PatternKind::Var(name) => {
-                if self.scope.push_local(name).is_err() {
+            PatternKind::Var(name) => match self.scope.push_local(name) {
+                Ok(id) => {
+                    self.res.refs.insert(p.span, ResolvedName::Local(id));
+                }
+                Err(()) => {
                     self.errors.push(Error {
                         span: p.span,
                         kind: ErrorKind::DuplicateLocal { name: name.clone() },
                     });
                 }
-            }
+            },
             PatternKind::Ctor { name, args } => {
                 self.resolve_ctor(name, p.span);
                 for sub in args {

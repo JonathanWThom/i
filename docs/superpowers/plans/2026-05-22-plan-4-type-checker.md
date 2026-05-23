@@ -953,7 +953,11 @@ git commit -m "Plan 4 Task 7: variable lookup with instantiation"
 
 **Files:**
 - Modify: `src/check/infer.rs` (Lambda arm)
+- Modify: `src/resolve/walker.rs` (record binding-pattern span -> `Local` in `refs`)
+- Modify: affected resolver tests (Local ref counts bump by the number of pattern bindings)
 - Test: `tests/check_literals.rs` (add)
+
+The resolver currently records `Var` *use* spans in `refs` but not pattern *binding* spans. The checker needs both — given a pattern Var node, it must recover the `LocalId` to know which tyvar to attach to the bound name. Extending `bind_pattern` to insert `p.span -> ResolvedName::Local(id)` makes `refs` complete (every binding site and every use site has an entry) and matches the resolver's symmetry. The cost is bumping Local-ref counts in three existing resolver tests by a small known delta.
 
 - [ ] **Step 1: Write the failing test**
 

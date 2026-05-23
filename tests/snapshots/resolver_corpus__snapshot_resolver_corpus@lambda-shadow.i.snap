@@ -7,4 +7,5 @@ defs:
   DefId(0) x (Value)
   DefId(1) f (Value)
 refs:
+  33..34 -> Local(LocalId(0))
   38..39 -> Local(LocalId(0))

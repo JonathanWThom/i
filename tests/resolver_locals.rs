@@ -56,7 +56,8 @@ fn lambda_param_shadows_top_level() {
         .values()
         .filter(|r| matches!(r, ResolvedName::Local(_)))
         .collect();
-    assert_eq!(local_refs.len(), 1);
+    // x (lambda param binding) + x (body use) = 2 Local refs.
+    assert_eq!(local_refs.len(), 2);
 }
 
 #[test]
@@ -80,8 +81,8 @@ fn match_arm_binds_pattern_vars() {
         .values()
         .filter(|r| matches!(r, ResolvedName::Local(_)))
         .collect();
-    // x (scrutinee) + y (arm body) = 2 Local refs.
-    assert_eq!(local_refs.len(), 2);
+    // x (lambda param binding + scrutinee use) + y (pattern binding + arm body use) = 4.
+    assert_eq!(local_refs.len(), 4);
 }
 
 #[test]
@@ -105,8 +106,8 @@ fn block_let_binding_visible_later() {
         .values()
         .filter(|r| matches!(r, ResolvedName::Local(_)))
         .collect();
-    // x (in a = x+1), a (in b = a+1), b (final expr) = 3.
-    assert_eq!(local_refs.len(), 3);
+    // x (lambda param binding + use in a=x+1), a (use in b=a+1), b (final expr) = 4.
+    assert_eq!(local_refs.len(), 4);
 }
 
 #[test]
