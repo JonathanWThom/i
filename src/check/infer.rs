@@ -1,4 +1,5 @@
-use crate::check::types::{Scheme, Subst, Ty, TyVarId, Typing};
+use crate::ast::{Expr, ExprKind};
+use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::apply_subst;
 use crate::error::Error;
 use crate::resolve::{DefId, LocalId};
@@ -33,6 +34,20 @@ impl Infer {
 
     pub fn record_pattern_type(&mut self, span: Span, ty: Ty) {
         self.pattern_types.insert(span, ty);
+    }
+
+    pub fn infer_expr(&mut self, e: &Expr) -> Ty {
+        let ty = match &e.node {
+            ExprKind::IntLit(_) => Ty::Prim(PrimTy::Int),
+            ExprKind::FloatLit(_) => Ty::Prim(PrimTy::Float),
+            ExprKind::StringLit(_) => Ty::Prim(PrimTy::String),
+            _ => {
+                let v = self.fresh();
+                Ty::Var(v)
+            }
+        };
+        self.record_expr_type(e.span, ty.clone());
+        ty
     }
 
     pub fn into_typing(self) -> Typing {
