@@ -1,8 +1,40 @@
-use super::types::{DefId, DefInfo, DefKind, LocalId, Resolution};
-use crate::ast::{Decl, DeclKind, File, TypeBody, TypeMember};
+use super::module_set::ModuleSet;
+use super::types::{DefId, DefInfo, DefKind, LocalId, ModulePath, Resolution};
+use crate::ast::{Decl, DeclKind, File, TypeBody, TypeMember, UseKind};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 use std::collections::HashMap;
+
+#[derive(Default)]
+pub(super) struct Imports {
+    pub modules: Vec<ModulePath>,
+    #[allow(dead_code)] // populated by Task 12 (cherry-pick).
+    pub cherries: HashMap<String, (ModulePath, String)>,
+    #[allow(dead_code)] // populated by Task 13 (alias).
+    pub aliases: HashMap<String, ModulePath>,
+}
+
+pub(super) fn collect_imports(file: &File, set: &ModuleSet, errors: &mut Vec<Error>) -> Imports {
+    let mut imp = Imports::default();
+    for decl in &file.decls {
+        if let DeclKind::Use { path, kind } = &decl.node {
+            if !set.contains_key(path) {
+                errors.push(Error {
+                    span: decl.span,
+                    kind: ErrorKind::UnknownModule { path: path.clone() },
+                });
+                continue;
+            }
+            match kind {
+                UseKind::Whole => imp.modules.push(path.clone()),
+                UseKind::Cherry(_) | UseKind::Alias(_) => {
+                    // Tasks 12 and 13 fill these in.
+                }
+            }
+        }
+    }
+    imp
+}
 
 #[derive(Default)]
 pub(super) struct ScopeStack {

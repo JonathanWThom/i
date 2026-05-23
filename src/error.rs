@@ -33,4 +33,7 @@ pub enum ErrorKind {
     DuplicateLocal {
         name: String,
     },
+    UnknownModule {
+        path: Vec<String>,
+    },
 }

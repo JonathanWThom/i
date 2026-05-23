@@ -1,5 +1,5 @@
-use super::scope::ScopeStack;
-use super::types::{DefKind, Resolution, ResolvedName};
+use super::scope::{Imports, ScopeStack};
+use super::types::{DefKind, ModulePath, Resolution, ResolvedName};
 use crate::ast::{Decl, DeclKind, Expr, ExprKind, File, Pattern, PatternKind};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
@@ -8,6 +8,7 @@ pub(super) struct Walker<'a> {
     res: &'a mut Resolution,
     errors: &'a mut Vec<Error>,
     scope: ScopeStack,
+    imports: &'a Imports,
 }
 
 impl<'a> Walker<'a> {
@@ -99,6 +100,40 @@ impl<'a> Walker<'a> {
         }
     }
 
+    fn try_resolve_qualified(&mut self, e: &Expr) -> bool {
+        let mut path: Vec<String> = Vec::new();
+        let mut node = e;
+        loop {
+            match &node.node {
+                ExprKind::FieldAccess { receiver, field } => {
+                    path.push(field.clone());
+                    node = receiver;
+                }
+                ExprKind::Var(name) | ExprKind::Ctor(name) => {
+                    path.push(name.clone());
+                    break;
+                }
+                _ => return false,
+            }
+        }
+        path.reverse();
+
+        for split in (1..path.len()).rev() {
+            let module_path: ModulePath = path[..split].to_vec();
+            if self.imports.modules.iter().any(|m| m == &module_path) {
+                self.res.refs.insert(
+                    e.span,
+                    ResolvedName::Imported {
+                        module: module_path,
+                        name: path[split].clone(),
+                    },
+                );
+                return true;
+            }
+        }
+        false
+    }
+
     fn resolve_type_name(&mut self, name: &str, span: Span) {
         if let Some(def) = self
             .res
@@ -174,7 +209,12 @@ impl<'a> Walker<'a> {
                 }
             }
             ExprKind::MethodCall { receiver, .. } => self.walk_expr(receiver),
-            ExprKind::FieldAccess { receiver, .. } => self.walk_expr(receiver),
+            ExprKind::FieldAccess { receiver, .. } => {
+                if self.try_resolve_qualified(e) {
+                    return;
+                }
+                self.walk_expr(receiver);
+            }
             ExprKind::Bang(inner) | ExprKind::Question(inner) => self.walk_expr(inner),
             ExprKind::Block(items) => self.walk_block(items),
         }
@@ -295,11 +335,17 @@ impl<'a> Walker<'a> {
     }
 }
 
-pub(super) fn walk_file(file: &File, res: &mut Resolution, errors: &mut Vec<Error>) {
+pub(super) fn walk_file(
+    file: &File,
+    res: &mut Resolution,
+    errors: &mut Vec<Error>,
+    imports: &Imports,
+) {
     let mut w = Walker {
         res,
         errors,
         scope: ScopeStack::new(),
+        imports,
     };
     w.walk_file(file);
 }
