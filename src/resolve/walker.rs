@@ -73,16 +73,34 @@ impl<'a> Walker<'a> {
             ExprKind::MethodCall { receiver, .. } => self.walk_expr(receiver),
             ExprKind::FieldAccess { receiver, .. } => self.walk_expr(receiver),
             ExprKind::Bang(inner) | ExprKind::Question(inner) => self.walk_expr(inner),
-            ExprKind::Block(items) => self.walk_block_stub(items),
+            ExprKind::Block(items) => self.walk_block(items),
         }
     }
 
-    fn walk_block_stub(&mut self, items: &[crate::ast::BlockItem]) {
+    fn walk_block(&mut self, items: &[crate::ast::BlockItem]) {
+        self.scope.push_frame();
         for item in items {
-            if let crate::ast::BlockItem::Expr(e) = item {
-                self.walk_expr(e);
+            match item {
+                crate::ast::BlockItem::Expr(e) => self.walk_expr(e),
+                crate::ast::BlockItem::Binding(decl) => {
+                    if let DeclKind::Binding {
+                        name,
+                        value: Some(v),
+                        ..
+                    } = &decl.node
+                    {
+                        self.walk_expr(v);
+                        if self.scope.push_local(name).is_err() {
+                            self.errors.push(Error {
+                                span: decl.span,
+                                kind: ErrorKind::DuplicateLocal { name: name.clone() },
+                            });
+                        }
+                    }
+                }
             }
         }
+        self.scope.pop_frame();
     }
 
     fn bind_pattern(&mut self, p: &Pattern) {

@@ -84,7 +84,6 @@ fn match_arm_binds_pattern_vars() {
     assert_eq!(local_refs.len(), 2);
 }
 
-#[ignore = "depends on Task 8 (block let-bindings) to be semantically meaningful"]
 #[test]
 fn pattern_var_out_of_arm_is_error() {
     let src = "module M\n    expose f\n\ntype Option a\n    None\n    Some : a\n\nf = x ->\n    z = x match\n        Some y -> y\n        None -> 0\n    y\n";
@@ -93,5 +92,30 @@ fn pattern_var_out_of_arm_is_error() {
     assert!(errs.iter().any(|e| matches!(
         &e.kind,
         ErrorKind::Unresolved { name } if name == "y"
+    )));
+}
+
+#[test]
+fn block_let_binding_visible_later() {
+    let src = "module M\n    expose f\n\nf = x ->\n    a = x + 1\n    b = a + 1\n    b\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let local_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Local(_)))
+        .collect();
+    // x (in a = x+1), a (in b = a+1), b (final expr) = 3.
+    assert_eq!(local_refs.len(), 3);
+}
+
+#[test]
+fn block_let_binding_not_visible_earlier() {
+    let src = "module M\n    expose f\n\nf =\n    a = b\n    b = 1\n    a\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::Unresolved { name } if name == "b"
     )));
 }
