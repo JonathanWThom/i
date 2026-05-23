@@ -23,7 +23,7 @@
 - [x] Explicit-pure callback `! ()`
 - [x] Marketing-claims softening + smaller items
 
-## Phase 2: Implementation — in progress (Plan 2)
+## Phase 2: Implementation — Plan 2 (lexer + parser) DONE
 - [x] Foundation: span, error, token, lexer scaffold (Tasks 1-3)
 - [x] Lexer: punctuation, idents/keywords, numbers, strings, comments (Tasks 4-8)
 - [x] Lexer refactor: extract token scanners (Task 8.5)
@@ -52,7 +52,7 @@
 - [x] Parser corpus snapshots (Task 28)
 - [x] Pretty printer (Task 29)
 - [x] Round-trip property test (Task 30)
-- [ ] Document testing strategy (Task 31)
+- [x] Document testing strategy (Task 31)
 
 ## Later v1 phases
 - [ ] Name resolution — Plan 3 (TBD)

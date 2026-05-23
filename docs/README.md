@@ -17,6 +17,7 @@ doc.
 - [Syntax](syntax.md) — every form, every operator
 - [Standard library](stdlib.md) — every type and function in v1
 - [Limitations](limitations.md) — what v1 doesn't do
+- [Testing strategy](testing.md) — how the compiler is tested, layer by layer
 
 ## Specs and plans
 
