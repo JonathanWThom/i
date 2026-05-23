@@ -10,3 +10,14 @@ fn empty_file_resolves() {
     assert_eq!(res.defs.len(), 1);
     assert_eq!(res.defs[0].name, "x");
 }
+
+#[test]
+fn collects_multiple_top_level() {
+    let src = "module M\n    expose x, y\n\nx = 1\ny = 2\n\ntype Pair\n    a : Int\n    b : Int\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let names: Vec<&str> = res.defs.iter().map(|d| d.name.as_str()).collect();
+    assert!(names.contains(&"x"));
+    assert!(names.contains(&"y"));
+    assert!(names.contains(&"Pair"));
+}

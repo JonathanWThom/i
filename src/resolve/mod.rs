@@ -1,21 +1,17 @@
+mod scope;
 mod types;
 
 pub use types::*;
 
-use crate::ast::{DeclKind, File};
+use crate::ast::File;
 use crate::error::Error;
 
 pub fn resolve_file(file: &File) -> Result<Resolution, Vec<Error>> {
     let mut res = Resolution::default();
-    if let Some(decl) = file.decls.first()
-        && let DeclKind::Binding { name, .. } = &decl.node
-    {
-        res.defs.push(DefInfo {
-            id: DefId(0),
-            name: name.clone(),
-            kind: DefKind::Value,
-            span: decl.span,
-        });
+    let errors = scope::collect_top_level(file, &mut res);
+    if errors.is_empty() {
+        Ok(res)
+    } else {
+        Err(errors)
     }
-    Ok(res)
 }
