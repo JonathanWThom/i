@@ -1846,6 +1846,15 @@ Alias-imports rename a module locally. `use Std.Float as F` makes `F.parse` work
 - Modify: `src/resolve/scope.rs` (populate `Imports::aliases`)
 - Modify: `src/resolve/walker.rs` (consult aliases in qualified-access resolution)
 - Modify: `tests/resolver_modules.rs`
+- Modify: `src/ast/mod.rs`, `src/parse/decl.rs`, `src/ast/display.rs`, `src/pretty.rs` — see "Parser amendment" below.
+
+**Parser amendment (deviation from original task scope).** The failing tests for this task assumed `module Std.Float` (dotted module header) parses. The v1 parser only accepts a single uppercase identifier. `docs/modules.md` § Layout shows dotted module headers as canonical (`module Std.IO`, `module Std.Float`), so this is a parser gap, not a spec extension. The fix is folded into Task 13's commit:
+
+- `ModuleHeader.name: String` → `Vec<String>` (matches how `use` paths are stored).
+- `parse_module_header` loops on `Dot` between `expect_upper` calls, mirroring `parse_use_decl`.
+- `ast/display.rs` and `pretty.rs` join the segments with `.` when rendering.
+
+Only one construction site of `ModuleHeader` exists (the parser) and no tests inspect `.name`, so the blast radius is small.
 
 - [ ] **Step 1: Write the failing test**
 

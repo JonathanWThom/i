@@ -15,7 +15,7 @@ pub struct File {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleHeader {
-    pub name: String,
+    pub name: Vec<String>,
     pub exposes: Vec<Expose>,
 }
 

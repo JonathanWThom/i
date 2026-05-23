@@ -118,6 +118,21 @@ impl<'a> Walker<'a> {
         }
         path.reverse();
 
+        if let Some(target) = self.imports.aliases.get(&path[0])
+            && path.len() > 1
+        {
+            let module_path = target.clone();
+            let name = path[1].clone();
+            self.res.refs.insert(
+                e.span,
+                ResolvedName::Imported {
+                    module: module_path,
+                    name,
+                },
+            );
+            return true;
+        }
+
         for split in (1..path.len()).rev() {
             let module_path: ModulePath = path[..split].to_vec();
             if self.imports.modules.iter().any(|m| m == &module_path) {

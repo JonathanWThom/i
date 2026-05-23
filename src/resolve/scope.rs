@@ -9,7 +9,6 @@ use std::collections::HashMap;
 pub(super) struct Imports {
     pub modules: Vec<ModulePath>,
     pub cherries: HashMap<String, (ModulePath, String)>,
-    #[allow(dead_code)] // populated by Task 13 (alias).
     pub aliases: HashMap<String, ModulePath>,
 }
 
@@ -31,8 +30,8 @@ pub(super) fn collect_imports(file: &File, set: &ModuleSet, errors: &mut Vec<Err
                         imp.cherries.insert(n.clone(), (path.clone(), n.clone()));
                     }
                 }
-                UseKind::Alias(_) => {
-                    // Task 13 fills this in.
+                UseKind::Alias(local) => {
+                    imp.aliases.insert(local.clone(), path.clone());
                 }
             }
         }

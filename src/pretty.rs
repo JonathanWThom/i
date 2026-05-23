@@ -51,7 +51,7 @@ impl Printer {
 
     fn write_module_header(&mut self, m: &ModuleHeader) {
         self.push("module ");
-        self.push(&m.name);
+        self.push(&m.name.join("."));
         self.indent_in();
         self.nl();
         self.push("expose ");

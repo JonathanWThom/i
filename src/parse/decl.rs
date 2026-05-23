@@ -36,7 +36,10 @@ fn parse_decl(cur: &mut Cursor) -> Result<Decl, Error> {
 
 fn parse_module_header(cur: &mut Cursor) -> Result<ModuleHeader, Error> {
     cur.bump();
-    let name = expect_upper(cur)?;
+    let mut name = vec![expect_upper(cur)?];
+    while cur.eat(&TokenKind::Dot) {
+        name.push(expect_upper(cur)?);
+    }
     cur.expect(TokenKind::Newline, "newline after module name")?;
     cur.expect(TokenKind::Indent, "indented expose clause")?;
     cur.expect(TokenKind::KwExpose, "`expose`")?;

@@ -40,7 +40,7 @@ impl Printer {
             self.indent_in();
             self.nl();
             self.push("(module ");
-            self.push(&m.name);
+            self.push(&m.name.join("."));
             for e in &m.exposes {
                 self.push(" ");
                 match e {
