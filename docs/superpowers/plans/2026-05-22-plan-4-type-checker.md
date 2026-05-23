@@ -1128,6 +1128,65 @@ git commit -m "Plan 4 Task 9: function application"
 
 ---
 
+## Task 9.5: Correct the precedence-table claim about paren-free call associativity
+
+**Files:**
+- Modify: `docs/syntax.md` (precedence table row 11 + a short clarifier in §5)
+- Modify: `tests/check_literals.rs` (rewrite the comment on `arity_mismatch_in_call_reports_error` to drop the "gotcha" framing)
+
+**Why this task exists (mid-execution amendment to Plan 4):** Task 9 surfaced what looked like a parser quirk — `id 1 2` parses as `id (1 2)`. The first proposed fix (reject juxtaposed args at parse time) broke the spec's own method-chaining example at `syntax.md:347-349`, which deliberately uses right-associative juxtaposition: `nums.map double.filter pred` parses as `nums.map (double.filter pred)`. That behaviour is pinned by `tests/parser_calls.rs::method_chain_atom_only`. The spec is internally consistent: `.` binds to the immediately preceding atom (§5), juxtaposition then groups right so chains compose without nesting parens. The "no currying" rule (§2) is about *lambda parameters*, not call shape.
+
+**The actual bug** is the precedence table at `syntax.md:814` claiming `function call (juxtaposition)` is **left-associative**. It's right-associative, and that's a deliberate feature. The misleading row is what made `id 1 2` look like a parser bug instead of a documented consequence.
+
+**Decision:** Fix the precedence table to match the spec's actual model and add a short pointer in §5 to the method-chaining section. No parser change; no new behaviour. The Task 9 test's `id 1, 2` (comma-separated) form stays — the comment just stops framing it as a "gotcha."
+
+- [ ] **Step 1: Verify the baseline is green**
+
+Run: `cargo test`
+Expected: PASS — Task 9.5 is a docs-only change, so the existing suite is the verification. `tests/parser_calls.rs::method_chain_atom_only` is the load-bearing assertion that pins right-associative juxtaposition; it must stay green.
+
+- [ ] **Step 2: Edit `docs/syntax.md` — precedence table row 11**
+
+Currently:
+
+```
+| 11   | function call (juxtaposition)     | left            |
+```
+
+Change to:
+
+```
+| 11   | function call (juxtaposition)     | right           |
+```
+
+- [ ] **Step 3: Edit `docs/syntax.md` — §5 clarification**
+
+In the "Nested call" subsection, after the `add 3, (mul 4, 5)` example, add a short sentence explaining that two juxtaposed call expressions group right-associatively, and point readers at the "Method chaining" subsection as the canonical case where this matters (`nums.map double.filter pred` → `nums.map (double.filter pred)`).
+
+- [ ] **Step 4: Edit `tests/check_literals.rs`**
+
+The comment on `arity_mismatch_in_call_reports_error` currently says:
+
+```
+// `id` takes one arg; pass two (comma-separated — `id 1 2` parses as
+// `id (1 2)` and produces a TypeMismatch from calling Int as a function).
+```
+
+Rewrite to drop the parenthetical and the "gotcha" framing — the test passes a 2-arg call (`id 1, 2`) to a 1-arg function; say that plainly.
+
+- [ ] **Step 5: Run tests and commit**
+
+Run: `cargo test` — expected PASS (no behavioural change).
+
+```bash
+git add docs/syntax.md tests/check_literals.rs docs/superpowers/plans/2026-05-22-plan-4-type-checker.md
+git commit -m "Plan 4 Task 9.5: correct precedence-table call associativity"
+```
+
+Fold the plan-amendment diff into the same commit — the plan revision and the spec change are the same task.
+
+---
+
 ## Task 10: Blocks and sequential let-bindings
 
 **Files:**

@@ -295,6 +295,11 @@ commas are not read as more arguments to the outer call.
 add 3, (mul 4, 5)
 ```
 
+Two juxtaposed call expressions group right-associatively: `f a b` is `f (a b)`,
+not `(f a) b`. This is what lets [method chaining](#method-chaining) compose
+without nested parens — `nums.map double.filter pred` reads as
+`nums.map (double.filter pred)`.
+
 ### Method call
 
 `instance.method args` looks up `method` on the type of `instance`, with
@@ -811,7 +816,7 @@ Loose to tight. Operators on the same row have equal precedence.
 | 8    | `*`, `/`                          | left            |
 | 9    | `^`                               | right           |
 | 10   | unary `-`                         | prefix          |
-| 11   | function call (juxtaposition)     | left            |
+| 11   | function call (juxtaposition)     | right           |
 | 12   | `.`, postfix `?`, postfix `!`     | left            |
 | 13   | atoms — literals, identifiers, `()` | —             |
 

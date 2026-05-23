@@ -42,8 +42,7 @@ n = id 42
 
 #[test]
 fn arity_mismatch_in_call_reports_error() {
-    // `id` takes one arg; pass two (comma-separated — `id 1 2` parses as
-    // `id (1 2)` and produces a TypeMismatch from calling Int as a function).
+    // `id` takes one arg; pass two.
     let src = "\
 id = x -> x
 n = id 1, 2
