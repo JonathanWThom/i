@@ -142,14 +142,24 @@ impl<'a> Walker<'a> {
             .find(|d| d.name == name && matches!(d.kind, DefKind::Type | DefKind::Trait))
         {
             self.res.refs.insert(span, ResolvedName::TopLevel(def.id));
-        } else {
-            self.errors.push(Error {
-                span,
-                kind: ErrorKind::Unresolved {
-                    name: name.to_string(),
-                },
-            });
+            return;
         }
+        if let Some((module, original)) = self.imports.cherries.get(name) {
+            self.res.refs.insert(
+                span,
+                ResolvedName::Imported {
+                    module: module.clone(),
+                    name: original.clone(),
+                },
+            );
+            return;
+        }
+        self.errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
     }
 
     fn walk_method(&mut self, decl: &Decl) {
@@ -291,6 +301,16 @@ impl<'a> Walker<'a> {
             self.res.refs.insert(span, ResolvedName::TopLevel(def.id));
             return;
         }
+        if let Some((module, original)) = self.imports.cherries.get(name) {
+            self.res.refs.insert(
+                span,
+                ResolvedName::Imported {
+                    module: module.clone(),
+                    name: original.clone(),
+                },
+            );
+            return;
+        }
         self.errors.push(Error {
             span,
             kind: ErrorKind::Unresolved {
@@ -307,14 +327,24 @@ impl<'a> Walker<'a> {
             .find(|d| d.name == name && matches!(d.kind, DefKind::Ctor { .. }))
         {
             self.res.refs.insert(span, ResolvedName::Ctor(def.id));
-        } else {
-            self.errors.push(Error {
-                span,
-                kind: ErrorKind::Unresolved {
-                    name: name.to_string(),
-                },
-            });
+            return;
         }
+        if let Some((module, original)) = self.imports.cherries.get(name) {
+            self.res.refs.insert(
+                span,
+                ResolvedName::Imported {
+                    module: module.clone(),
+                    name: original.clone(),
+                },
+            );
+            return;
+        }
+        self.errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
     }
 
     fn resolve_type_or_ctor(&mut self, name: &str, span: Span) {
@@ -324,14 +354,24 @@ impl<'a> Walker<'a> {
                 _ => ResolvedName::TopLevel(def.id),
             };
             self.res.refs.insert(span, resolved);
-        } else {
-            self.errors.push(Error {
-                span,
-                kind: ErrorKind::Unresolved {
-                    name: name.to_string(),
-                },
-            });
+            return;
         }
+        if let Some((module, original)) = self.imports.cherries.get(name) {
+            self.res.refs.insert(
+                span,
+                ResolvedName::Imported {
+                    module: module.clone(),
+                    name: original.clone(),
+                },
+            );
+            return;
+        }
+        self.errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
     }
 }
 

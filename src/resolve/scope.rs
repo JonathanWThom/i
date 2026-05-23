@@ -8,7 +8,6 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub(super) struct Imports {
     pub modules: Vec<ModulePath>,
-    #[allow(dead_code)] // populated by Task 12 (cherry-pick).
     pub cherries: HashMap<String, (ModulePath, String)>,
     #[allow(dead_code)] // populated by Task 13 (alias).
     pub aliases: HashMap<String, ModulePath>,
@@ -27,8 +26,13 @@ pub(super) fn collect_imports(file: &File, set: &ModuleSet, errors: &mut Vec<Err
             }
             match kind {
                 UseKind::Whole => imp.modules.push(path.clone()),
-                UseKind::Cherry(_) | UseKind::Alias(_) => {
-                    // Tasks 12 and 13 fill these in.
+                UseKind::Cherry(names) => {
+                    for n in names {
+                        imp.cherries.insert(n.clone(), (path.clone(), n.clone()));
+                    }
+                }
+                UseKind::Alias(_) => {
+                    // Task 13 fills this in.
                 }
             }
         }
