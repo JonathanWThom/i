@@ -1,8 +1,51 @@
-use super::types::{DefId, DefInfo, DefKind, Resolution};
+use super::types::{DefId, DefInfo, DefKind, LocalId, Resolution};
 use crate::ast::{Decl, DeclKind, File, TypeBody, TypeMember};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 use std::collections::HashMap;
+
+#[derive(Default)]
+pub(super) struct ScopeStack {
+    frames: Vec<Vec<(String, LocalId)>>,
+    next_id: u32,
+}
+
+impl ScopeStack {
+    pub(super) fn new() -> Self {
+        Self {
+            frames: vec![Vec::new()],
+            next_id: 0,
+        }
+    }
+
+    pub(super) fn push_frame(&mut self) {
+        self.frames.push(Vec::new());
+    }
+
+    pub(super) fn pop_frame(&mut self) {
+        self.frames.pop();
+    }
+
+    pub(super) fn push_local(&mut self, name: &str) -> Result<LocalId, ()> {
+        let frame = self.frames.last_mut().unwrap();
+        if frame.iter().any(|(n, _)| n == name) {
+            return Err(());
+        }
+        let id = LocalId(self.next_id);
+        self.next_id += 1;
+        frame.push((name.to_string(), id));
+        Ok(id)
+    }
+
+    pub(super) fn lookup_local(&self, name: &str) -> Option<LocalId> {
+        for frame in self.frames.iter().rev() {
+            if let Some((_, id)) = frame.iter().find(|(n, _)| n == name) {
+                return Some(*id);
+            }
+        }
+        None
+    }
+}
 
 pub(super) fn collect_top_level(file: &File, res: &mut Resolution) -> Vec<Error> {
     let mut errors = Vec::new();

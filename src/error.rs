@@ -30,4 +30,7 @@ pub enum ErrorKind {
     Unresolved {
         name: String,
     },
+    DuplicateLocal {
+        name: String,
+    },
 }

@@ -45,3 +45,27 @@ fn ctor_resolves() {
         .collect();
     assert_eq!(ctor_refs.len(), 1);
 }
+
+#[test]
+fn lambda_param_shadows_top_level() {
+    let src = "module M\n    expose f\n\nx = 1\nf = x -> x\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let local_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Local(_)))
+        .collect();
+    assert_eq!(local_refs.len(), 1);
+}
+
+#[test]
+fn duplicate_lambda_param_is_error() {
+    let src = "module M\n    expose f\n\nf = x x -> x\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::DuplicateLocal { name } if name == "x"
+    )));
+}

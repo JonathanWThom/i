@@ -1,95 +1,138 @@
+use super::scope::ScopeStack;
 use super::types::{DefKind, Resolution, ResolvedName};
-use crate::ast::{Decl, DeclKind, Expr, ExprKind, File};
+use crate::ast::{Decl, DeclKind, Expr, ExprKind, File, Pattern, PatternKind};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 
+pub(super) struct Walker<'a> {
+    res: &'a mut Resolution,
+    errors: &'a mut Vec<Error>,
+    scope: ScopeStack,
+}
+
+impl<'a> Walker<'a> {
+    fn walk_file(&mut self, file: &File) {
+        for decl in &file.decls {
+            self.walk_decl(decl);
+        }
+    }
+
+    fn walk_decl(&mut self, decl: &Decl) {
+        if let DeclKind::Binding { value: Some(v), .. } = &decl.node {
+            self.walk_expr(v);
+        }
+    }
+
+    fn walk_expr(&mut self, e: &Expr) {
+        match &e.node {
+            ExprKind::Var(name) => self.resolve_var(name, e.span),
+            ExprKind::IntLit(_) | ExprKind::FloatLit(_) | ExprKind::StringLit(_) => {}
+            ExprKind::Ctor(name) => self.resolve_ctor(name, e.span),
+            ExprKind::Paren(inner) => self.walk_expr(inner),
+            ExprKind::BinOp { lhs, rhs, .. } => {
+                self.walk_expr(lhs);
+                self.walk_expr(rhs);
+            }
+            ExprKind::UnaryOp { expr, .. } => self.walk_expr(expr),
+            ExprKind::List(items) => items.iter().for_each(|i| self.walk_expr(i)),
+            ExprKind::Lambda { params, body } => {
+                self.scope.push_frame();
+                for p in params {
+                    self.bind_pattern(p);
+                }
+                self.walk_expr(body);
+                self.scope.pop_frame();
+            }
+            ExprKind::Construct { type_name, fields } => {
+                self.resolve_type_or_ctor(type_name, e.span);
+                for kw in fields {
+                    self.walk_expr(&kw.value);
+                }
+            }
+            ExprKind::Update { value, fields } => {
+                self.walk_expr(value);
+                for kw in fields {
+                    self.walk_expr(&kw.value);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn bind_pattern(&mut self, p: &Pattern) {
+        if let PatternKind::Var(name) = &p.node
+            && self.scope.push_local(name).is_err()
+        {
+            self.errors.push(Error {
+                span: p.span,
+                kind: ErrorKind::DuplicateLocal { name: name.clone() },
+            });
+        }
+    }
+
+    fn resolve_var(&mut self, name: &str, span: Span) {
+        if let Some(id) = self.scope.lookup_local(name) {
+            self.res.refs.insert(span, ResolvedName::Local(id));
+            return;
+        }
+        if let Some(def) = self
+            .res
+            .defs
+            .iter()
+            .find(|d| d.name == name && matches!(d.kind, DefKind::Value))
+        {
+            self.res.refs.insert(span, ResolvedName::TopLevel(def.id));
+            return;
+        }
+        self.errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
+    }
+
+    fn resolve_ctor(&mut self, name: &str, span: Span) {
+        if let Some(def) = self
+            .res
+            .defs
+            .iter()
+            .find(|d| d.name == name && matches!(d.kind, DefKind::Ctor { .. }))
+        {
+            self.res.refs.insert(span, ResolvedName::Ctor(def.id));
+        } else {
+            self.errors.push(Error {
+                span,
+                kind: ErrorKind::Unresolved {
+                    name: name.to_string(),
+                },
+            });
+        }
+    }
+
+    fn resolve_type_or_ctor(&mut self, name: &str, span: Span) {
+        if let Some(def) = self.res.defs.iter().find(|d| d.name == name) {
+            let resolved = match def.kind {
+                DefKind::Ctor { .. } => ResolvedName::Ctor(def.id),
+                _ => ResolvedName::TopLevel(def.id),
+            };
+            self.res.refs.insert(span, resolved);
+        } else {
+            self.errors.push(Error {
+                span,
+                kind: ErrorKind::Unresolved {
+                    name: name.to_string(),
+                },
+            });
+        }
+    }
+}
+
 pub(super) fn walk_file(file: &File, res: &mut Resolution, errors: &mut Vec<Error>) {
-    for decl in &file.decls {
-        walk_decl(decl, res, errors);
-    }
-}
-
-fn walk_decl(decl: &Decl, res: &mut Resolution, errors: &mut Vec<Error>) {
-    if let DeclKind::Binding { value: Some(v), .. } = &decl.node {
-        walk_expr(v, res, errors);
-    }
-}
-
-fn walk_expr(e: &Expr, res: &mut Resolution, errors: &mut Vec<Error>) {
-    match &e.node {
-        ExprKind::Var(name) => resolve_var(name, e.span, res, errors),
-        ExprKind::IntLit(_) | ExprKind::FloatLit(_) | ExprKind::StringLit(_) => {}
-        ExprKind::Ctor(name) => resolve_ctor(name, e.span, res, errors),
-        ExprKind::Paren(inner) => walk_expr(inner, res, errors),
-        ExprKind::BinOp { lhs, rhs, .. } => {
-            walk_expr(lhs, res, errors);
-            walk_expr(rhs, res, errors);
-        }
-        ExprKind::UnaryOp { expr, .. } => walk_expr(expr, res, errors),
-        ExprKind::List(items) => items.iter().for_each(|i| walk_expr(i, res, errors)),
-        ExprKind::Construct { type_name, fields } => {
-            resolve_type_or_ctor(type_name, e.span, res, errors);
-            for kw in fields {
-                walk_expr(&kw.value, res, errors);
-            }
-        }
-        ExprKind::Update { value, fields } => {
-            walk_expr(value, res, errors);
-            for kw in fields {
-                walk_expr(&kw.value, res, errors);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn resolve_var(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Error>) {
-    if let Some(def) = res
-        .defs
-        .iter()
-        .find(|d| d.name == name && matches!(d.kind, DefKind::Value))
-    {
-        res.refs.insert(span, ResolvedName::TopLevel(def.id));
-    } else {
-        errors.push(Error {
-            span,
-            kind: ErrorKind::Unresolved {
-                name: name.to_string(),
-            },
-        });
-    }
-}
-
-fn resolve_ctor(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Error>) {
-    if let Some(def) = res
-        .defs
-        .iter()
-        .find(|d| d.name == name && matches!(d.kind, DefKind::Ctor { .. }))
-    {
-        res.refs.insert(span, ResolvedName::Ctor(def.id));
-    } else {
-        errors.push(Error {
-            span,
-            kind: ErrorKind::Unresolved {
-                name: name.to_string(),
-            },
-        });
-    }
-}
-
-fn resolve_type_or_ctor(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Error>) {
-    if let Some(def) = res.defs.iter().find(|d| d.name == name) {
-        let resolved = match def.kind {
-            DefKind::Ctor { .. } => ResolvedName::Ctor(def.id),
-            _ => ResolvedName::TopLevel(def.id),
-        };
-        res.refs.insert(span, resolved);
-    } else {
-        errors.push(Error {
-            span,
-            kind: ErrorKind::Unresolved {
-                name: name.to_string(),
-            },
-        });
-    }
+    let mut w = Walker {
+        res,
+        errors,
+        scope: ScopeStack::new(),
+    };
+    w.walk_file(file);
 }
