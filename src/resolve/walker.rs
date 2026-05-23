@@ -18,8 +18,51 @@ impl<'a> Walker<'a> {
     }
 
     fn walk_decl(&mut self, decl: &Decl) {
+        match &decl.node {
+            DeclKind::Binding { value: Some(v), .. } => self.walk_expr(v),
+            DeclKind::Binding { value: None, .. } => {}
+            DeclKind::TypeDecl { body, .. } => self.walk_type_body(body),
+            DeclKind::TraitDecl { methods, .. } | DeclKind::ImplDecl { methods, .. } => {
+                for m in methods {
+                    self.walk_method(m);
+                }
+            }
+            DeclKind::Use { .. } => {}
+        }
+    }
+
+    fn walk_type_body(&mut self, body: &crate::ast::TypeBody) {
+        use crate::ast::{TypeBody, TypeMember, VariantBody};
+        match body {
+            TypeBody::Newtype(_) => {}
+            TypeBody::Block(members) => {
+                for m in members {
+                    match m {
+                        TypeMember::Field { .. } => {}
+                        TypeMember::Method(d) => self.walk_method(d),
+                        TypeMember::Variant {
+                            body: VariantBody::Fields(sub),
+                            ..
+                        } => {
+                            for inner in sub {
+                                if let TypeMember::Method(d) = inner {
+                                    self.walk_method(d);
+                                }
+                            }
+                        }
+                        TypeMember::Variant { .. } => {}
+                    }
+                }
+            }
+        }
+    }
+
+    fn walk_method(&mut self, decl: &Decl) {
         if let DeclKind::Binding { value: Some(v), .. } = &decl.node {
+            self.scope.push_frame();
+            let _ = self.scope.push_local("self");
             self.walk_expr(v);
+            self.scope.pop_frame();
         }
     }
 

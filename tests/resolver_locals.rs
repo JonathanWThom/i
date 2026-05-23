@@ -119,3 +119,27 @@ fn block_let_binding_not_visible_earlier() {
         ErrorKind::Unresolved { name } if name == "b"
     )));
 }
+
+#[test]
+fn self_resolves_in_method() {
+    let src = "module M\n    expose Point\n\ntype Point\n    x : Float\n    y : Float\n    sumXY = self.x + self.y\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let self_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Local(_)))
+        .collect();
+    assert_eq!(self_refs.len(), 2);
+}
+
+#[test]
+fn self_not_in_scope_outside_method() {
+    let src = "module M\n    expose f\n\nf = self\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::Unresolved { name } if name == "self"
+    )));
+}
