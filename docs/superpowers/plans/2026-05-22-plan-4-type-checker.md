@@ -1191,7 +1191,11 @@ Fold the plan-amendment diff into the same commit — the plan revision and the 
 
 **Files:**
 - Modify: `src/check/infer.rs` (Block arm)
+- Modify: `src/resolve/walker.rs` (record block-binding `LocalId` in `refs` at `decl.span`, mirroring the Task 8 pattern-binding tweak)
+- Modify: `tests/resolver_locals.rs` (`block_let_binding_visible_later`: ref count 4 → 6 to account for the new binding-site entries)
 - Test: `tests/check_bindings.rs` (add)
+
+> **Amendment during execution:** The plan originally wrote the failing-test source as `f = -> ...` assuming a zero-arg lambda syntax — but the spec (`syntax.md:253-256`) only admits zero-arg functions as *effectful procedures* (`: ! Eff -> result`). The pure-block form is `name = <indented block>` — no lambda arrow. Tests rewritten to that form; assertions on `f`'s scheme are now a direct `Int` comparison rather than a `Fun` match. Annotation handling (`lower_type`) deferred to Task 11 where it actually arrives.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1201,7 +1205,7 @@ Add to `tests/check_bindings.rs`:
 #[test]
 fn block_local_takes_inferred_type() {
     let src = "\
-f = ->
+f =
     n = 42
     n
 ";
@@ -1209,21 +1213,15 @@ f = ->
     let res = resolve_file(&file).unwrap();
     let typing = check_file(&file, &res).unwrap();
     let f = res.defs.iter().find(|d| d.name == "f").unwrap();
-    match &typing.schemes[&f.id].ty {
-        Ty::Fun(params, result) => {
-            assert!(params.is_empty());
-            assert_eq!(result.as_ref(), &Ty::Prim(PrimTy::Int));
-        }
-        other => panic!("expected Fun, got {:?}", other),
-    }
+    assert_eq!(typing.schemes[&f.id].ty, Ty::Prim(PrimTy::Int));
 }
 
 #[test]
 fn block_local_is_monomorphic() {
-    // id = x -> x; id 1 and id "hi" inside the same block should error because
-    // the block-local id is monomorphic — its type fixes after the first call.
+    // id bound inside a block is monomorphic — its tyvar fixes after the first
+    // call, so a second call with a different arg type errors.
     let src = "\
-f = ->
+result =
     id = x -> x
     n = id 1
     s = id \"hi\"
@@ -1245,39 +1243,24 @@ Expected: FAIL — Block isn't handled.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Add to `infer_expr`:
+First, the resolver tweak — `src/resolve/walker.rs::walk_block` currently allocates a `LocalId` via `push_local` but does **not** record it in `self.res.refs`. The checker needs that mapping. Match the Task 8 pattern-binding tweak: on `Ok(id)`, insert `decl.span -> ResolvedName::Local(id)`; on `Err(())`, keep the existing `DuplicateLocal` error path.
+
+Then add the Block arm in `infer_expr`:
 
 ```rust
 ExprKind::Block(items) => {
     use crate::ast::{BlockItem, DeclKind};
-    let mut last_ty = Ty::Prim(crate::check::types::PrimTy::Unit);
+    let mut last_ty = Ty::Prim(PrimTy::Unit);
     for item in items {
         match item {
             BlockItem::Binding(decl) => {
-                if let DeclKind::Binding { name, value: Some(value), ty } = &decl.node {
+                if let DeclKind::Binding { value: Some(value), .. } = &decl.node {
                     let value_ty = self.infer_expr(value);
-                    if let Some(annot) = ty {
-                        let annot_ty = self.lower_type(annot);
-                        if let Err(e) = crate::check::unify::unify(
-                            &mut self.subst, &annot_ty, &value_ty,
-                        ) {
-                            self.errors.push(unify_to_error(annot.span, e));
-                        }
-                    }
-                    // Resolver allocated a LocalId for this binding; look it up
-                    // from decl.span (resolver convention: binding's defining span).
-                    if let Some(crate::resolve::ResolvedName::Local(lid)) =
-                        self.res.refs.get(&decl.span)
-                    {
+                    if let Some(ResolvedName::Local(lid)) = self.res.refs.get(&decl.span) {
                         self.locals.insert(*lid, value_ty);
-                    } else {
-                        // Resolver may not have a refs entry for the binding's defining
-                        // span; instead, the LocalId is recorded against the *name*
-                        // token's span. Pull it from there if available.
-                        let _ = name;
                     }
                 }
-                last_ty = Ty::Prim(crate::check::types::PrimTy::Unit);
+                last_ty = Ty::Prim(PrimTy::Unit);
             }
             BlockItem::Expr(expr) => {
                 last_ty = self.infer_expr(expr);
@@ -1288,7 +1271,7 @@ ExprKind::Block(items) => {
 }
 ```
 
-Reality check before committing: the resolver stores the binding's `LocalId` under the *name token's* span, not the decl's span. Pull the actual storage location from `src/resolve/walker.rs::walk_block_binding` and adjust the lookup. If the resolver doesn't expose the binding-name span at all, add a helper (`fn binding_local(...)`) to `src/resolve/` that returns the `LocalId` for a `Decl`.
+Type annotations on block-let bindings are ignored here — annotation handling (`lower_type` + unify) lands in Task 11 and applies uniformly to top-level and block bindings.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1298,9 +1281,12 @@ Expected: PASS — `block_local_takes_inferred_type` and `block_local_is_monomor
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/check/ src/resolve/ tests/check_bindings.rs
+git add src/check/ src/resolve/ tests/check_bindings.rs tests/resolver_locals.rs \
+        docs/superpowers/plans/2026-05-22-plan-4-type-checker.md
 git commit -m "Plan 4 Task 10: blocks and sequential let-bindings"
 ```
+
+Fold the plan-amendment diff (test source rewrite, resolver-tweak note) into the same commit.
 
 ---
 

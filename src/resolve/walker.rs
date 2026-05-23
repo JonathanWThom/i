@@ -258,11 +258,16 @@ impl<'a> Walker<'a> {
                     } = &decl.node
                     {
                         self.walk_expr(v);
-                        if self.scope.push_local(name).is_err() {
-                            self.errors.push(Error {
-                                span: decl.span,
-                                kind: ErrorKind::DuplicateLocal { name: name.clone() },
-                            });
+                        match self.scope.push_local(name) {
+                            Ok(id) => {
+                                self.res.refs.insert(decl.span, ResolvedName::Local(id));
+                            }
+                            Err(()) => {
+                                self.errors.push(Error {
+                                    span: decl.span,
+                                    kind: ErrorKind::DuplicateLocal { name: name.clone() },
+                                });
+                            }
                         }
                     }
                 }

@@ -31,3 +31,37 @@ b = 1
     assert_eq!(typing.schemes[&a.id].ty, Ty::Prim(PrimTy::Int));
     assert_eq!(typing.schemes[&b.id].ty, Ty::Prim(PrimTy::Int));
 }
+
+#[test]
+fn block_local_takes_inferred_type() {
+    let src = "\
+f =
+    n = 42
+    n
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let f = res.defs.iter().find(|d| d.name == "f").unwrap();
+    assert_eq!(typing.schemes[&f.id].ty, Ty::Prim(PrimTy::Int));
+}
+
+#[test]
+fn block_local_is_monomorphic() {
+    // id bound inside a block is monomorphic — its tyvar fixes after the first
+    // call, so a second call with a different arg type errors.
+    let src = "\
+result =
+    id = x -> x
+    n = id 1
+    s = id \"hi\"
+    n
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. }))
+    );
+}

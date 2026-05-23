@@ -99,6 +99,32 @@ impl<'a> Infer<'a> {
                 }
                 Ty::Var(result_v)
             }
+            ExprKind::Block(items) => {
+                use crate::ast::{BlockItem, DeclKind};
+                let mut last_ty = Ty::Prim(PrimTy::Unit);
+                for item in items {
+                    match item {
+                        BlockItem::Binding(decl) => {
+                            if let DeclKind::Binding {
+                                value: Some(value), ..
+                            } = &decl.node
+                            {
+                                let value_ty = self.infer_expr(value);
+                                if let Some(ResolvedName::Local(lid)) =
+                                    self.res.refs.get(&decl.span)
+                                {
+                                    self.locals.insert(*lid, value_ty);
+                                }
+                            }
+                            last_ty = Ty::Prim(PrimTy::Unit);
+                        }
+                        BlockItem::Expr(expr) => {
+                            last_ty = self.infer_expr(expr);
+                        }
+                    }
+                }
+                last_ty
+            }
             _ => Ty::Var(self.fresh()),
         };
         self.record_expr_type(e.span, ty.clone());

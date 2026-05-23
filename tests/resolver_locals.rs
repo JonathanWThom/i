@@ -106,8 +106,8 @@ fn block_let_binding_visible_later() {
         .values()
         .filter(|r| matches!(r, ResolvedName::Local(_)))
         .collect();
-    // x (lambda param binding + use in a=x+1), a (use in b=a+1), b (final expr) = 4.
-    assert_eq!(local_refs.len(), 4);
+    // x (param binding + use in a=x+1), a (binding + use in b=a+1), b (binding + final expr) = 6.
+    assert_eq!(local_refs.len(), 6);
 }
 
 #[test]
