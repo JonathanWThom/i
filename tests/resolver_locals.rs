@@ -69,3 +69,29 @@ fn duplicate_lambda_param_is_error() {
         ErrorKind::DuplicateLocal { name } if name == "x"
     )));
 }
+
+#[test]
+fn match_arm_binds_pattern_vars() {
+    let src = "module M\n    expose f\n\ntype Option a\n    None\n    Some : a\n\nf = x ->\n    x match\n        Some y -> y\n        None -> 0\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let local_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Local(_)))
+        .collect();
+    // x (scrutinee) + y (arm body) = 2 Local refs.
+    assert_eq!(local_refs.len(), 2);
+}
+
+#[ignore = "depends on Task 8 (block let-bindings) to be semantically meaningful"]
+#[test]
+fn pattern_var_out_of_arm_is_error() {
+    let src = "module M\n    expose f\n\ntype Option a\n    None\n    Some : a\n\nf = x ->\n    z = x match\n        Some y -> y\n        None -> 0\n    y\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::Unresolved { name } if name == "y"
+    )));
+}

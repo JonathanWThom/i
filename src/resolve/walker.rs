@@ -55,18 +55,64 @@ impl<'a> Walker<'a> {
                     self.walk_expr(&kw.value);
                 }
             }
-            _ => {}
+            ExprKind::Match { scrutinee, arms } => {
+                self.walk_expr(scrutinee);
+                for arm in arms {
+                    self.scope.push_frame();
+                    self.bind_pattern(&arm.pattern);
+                    self.walk_expr(&arm.body);
+                    self.scope.pop_frame();
+                }
+            }
+            ExprKind::Call { func, args } => {
+                self.walk_expr(func);
+                for a in args {
+                    self.walk_expr(a);
+                }
+            }
+            ExprKind::MethodCall { receiver, .. } => self.walk_expr(receiver),
+            ExprKind::FieldAccess { receiver, .. } => self.walk_expr(receiver),
+            ExprKind::Bang(inner) | ExprKind::Question(inner) => self.walk_expr(inner),
+            ExprKind::Block(items) => self.walk_block_stub(items),
+        }
+    }
+
+    fn walk_block_stub(&mut self, items: &[crate::ast::BlockItem]) {
+        for item in items {
+            if let crate::ast::BlockItem::Expr(e) = item {
+                self.walk_expr(e);
+            }
         }
     }
 
     fn bind_pattern(&mut self, p: &Pattern) {
-        if let PatternKind::Var(name) = &p.node
-            && self.scope.push_local(name).is_err()
-        {
-            self.errors.push(Error {
-                span: p.span,
-                kind: ErrorKind::DuplicateLocal { name: name.clone() },
-            });
+        match &p.node {
+            PatternKind::Wildcard | PatternKind::Lit(_) => {}
+            PatternKind::Var(name) => {
+                if self.scope.push_local(name).is_err() {
+                    self.errors.push(Error {
+                        span: p.span,
+                        kind: ErrorKind::DuplicateLocal { name: name.clone() },
+                    });
+                }
+            }
+            PatternKind::Ctor { name, args } => {
+                self.resolve_ctor(name, p.span);
+                for sub in args {
+                    self.bind_pattern(sub);
+                }
+            }
+            PatternKind::Tuple(items) | PatternKind::List(items) => {
+                for sub in items {
+                    self.bind_pattern(sub);
+                }
+            }
+            PatternKind::Record { type_name, fields } => {
+                self.resolve_type_or_ctor(type_name, p.span);
+                for fp in fields {
+                    self.bind_pattern(&fp.pattern);
+                }
+            }
         }
     }
 
