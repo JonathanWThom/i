@@ -24,6 +24,55 @@ pub fn occurs(var: TyVarId, ty: &Ty, subst: &Subst) -> bool {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum UnifyError {
+    Mismatch { left: Ty, right: Ty },
+    Occurs(TyVarId),
+    Arity { expected: usize, found: usize },
+}
+
+pub fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), UnifyError> {
+    let a = apply_subst(a, subst);
+    let b = apply_subst(b, subst);
+    match (a, b) {
+        (Ty::Var(x), Ty::Var(y)) if x == y => Ok(()),
+        (Ty::Var(v), t) | (t, Ty::Var(v)) => {
+            if occurs(v, &t, subst) {
+                Err(UnifyError::Occurs(v))
+            } else {
+                subst.insert(v, t);
+                Ok(())
+            }
+        }
+        (Ty::Prim(p), Ty::Prim(q)) if p == q => Ok(()),
+        (Ty::Con(id1, args1), Ty::Con(id2, args2)) if id1 == id2 => {
+            if args1.len() != args2.len() {
+                return Err(UnifyError::Arity {
+                    expected: args1.len(),
+                    found: args2.len(),
+                });
+            }
+            for (x, y) in args1.iter().zip(args2.iter()) {
+                unify(subst, x, y)?;
+            }
+            Ok(())
+        }
+        (Ty::Fun(p1, r1), Ty::Fun(p2, r2)) => {
+            if p1.len() != p2.len() {
+                return Err(UnifyError::Arity {
+                    expected: p1.len(),
+                    found: p2.len(),
+                });
+            }
+            for (x, y) in p1.iter().zip(p2.iter()) {
+                unify(subst, x, y)?;
+            }
+            unify(subst, &r1, &r2)
+        }
+        (left, right) => Err(UnifyError::Mismatch { left, right }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,5 +96,49 @@ mod tests {
         let ty = Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Int)));
         assert!(occurs(TyVarId(0), &ty, &HashMap::new()));
         assert!(!occurs(TyVarId(1), &ty, &HashMap::new()));
+    }
+
+    #[test]
+    fn unify_primitive_succeeds_when_equal() {
+        let mut s: crate::check::types::Subst = HashMap::new();
+        unify(&mut s, &Ty::Prim(PrimTy::Int), &Ty::Prim(PrimTy::Int)).unwrap();
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn unify_primitive_fails_when_distinct() {
+        let mut s: crate::check::types::Subst = HashMap::new();
+        let r = unify(&mut s, &Ty::Prim(PrimTy::Int), &Ty::Prim(PrimTy::Float));
+        assert!(matches!(r, Err(UnifyError::Mismatch { .. })));
+    }
+
+    #[test]
+    fn unify_var_binds_when_unbound() {
+        let mut s: crate::check::types::Subst = HashMap::new();
+        unify(&mut s, &Ty::Var(TyVarId(0)), &Ty::Prim(PrimTy::Int)).unwrap();
+        assert_eq!(s.get(&TyVarId(0)), Some(&Ty::Prim(PrimTy::Int)));
+    }
+
+    #[test]
+    fn unify_var_with_self_containing_term_is_occurs_check() {
+        let mut s: crate::check::types::Subst = HashMap::new();
+        let lhs = Ty::Var(TyVarId(0));
+        let rhs = Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Int)));
+        let r = unify(&mut s, &lhs, &rhs);
+        assert!(matches!(r, Err(UnifyError::Occurs(_))));
+    }
+
+    #[test]
+    fn unify_fun_compares_arities() {
+        let mut s: crate::check::types::Subst = HashMap::new();
+        let one = Ty::Fun(vec![Ty::Prim(PrimTy::Int)], Box::new(Ty::Prim(PrimTy::Int)));
+        let two = Ty::Fun(
+            vec![Ty::Prim(PrimTy::Int), Ty::Prim(PrimTy::Int)],
+            Box::new(Ty::Prim(PrimTy::Int)),
+        );
+        assert!(matches!(
+            unify(&mut s, &one, &two),
+            Err(UnifyError::Arity { .. })
+        ));
     }
 }

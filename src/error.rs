@@ -43,4 +43,15 @@ pub enum ErrorKind {
         module: Vec<String>,
         name: String,
     },
+    TypeMismatch {
+        expected: String,
+        found: String,
+    },
+    OccursCheck {
+        var: String,
+    },
+    ArityMismatch {
+        expected: usize,
+        found: usize,
+    },
 }
