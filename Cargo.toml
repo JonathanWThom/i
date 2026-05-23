@@ -16,7 +16,6 @@ name = "i_lang"
 path = "src/lib.rs"
 
 [dependencies]
-# none yet — Plan 2 introduces parser, error reporting
 
 [dev-dependencies]
 insta = { version = "1", features = ["glob"] }
