@@ -117,3 +117,40 @@ fn module_cycle_detected() {
             .any(|e| matches!(&e.kind, ErrorKind::ModuleCycle { .. }))
     );
 }
+
+#[test]
+fn two_module_project_resolves_end_to_end() {
+    let lib = parse_module(
+        "module Geometry\n    expose Point, distance\n\ntype Float\n    v : Float\n\ntype Point\n    x : Float\n    y : Float\n\ndistance = a b -> a.x - b.x\n",
+    );
+    let app = parse_module(
+        "module Main\n    expose main\n\nuse Geometry (Point, distance)\n\nmain =\n    p1 = Point(x = 0, y = 0)\n    p2 = Point(x = 3, y = 4)\n    distance p1, p2\n",
+    );
+    let mut set: ModuleSet = HashMap::new();
+    set.insert(vec!["Geometry".into()], lib);
+    set.insert(vec!["Main".into()], app);
+    let project = resolve_project(&set).unwrap();
+    let main_res = project.get(&vec!["Main".into()] as &ModulePath).unwrap();
+
+    let imported: Vec<_> = main_res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Imported { .. }))
+        .collect();
+    assert!(
+        imported.len() >= 3,
+        "expected at least 3 imported refs, got {}",
+        imported.len()
+    );
+
+    let locals: Vec<_> = main_res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Local(_)))
+        .collect();
+    assert!(
+        locals.len() >= 2,
+        "expected at least 2 local refs, got {}",
+        locals.len()
+    );
+}

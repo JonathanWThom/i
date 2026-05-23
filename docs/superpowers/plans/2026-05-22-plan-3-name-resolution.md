@@ -2358,6 +2358,8 @@ A single integration test that builds a small two-module project (a `Geometry` l
 **Files:**
 - Modify: `tests/resolver_modules.rs`
 
+**Fixture deviation.** As-written, the Geometry lib uses `Float` for field types and has no stub, so `resolve_project` errors with `Unresolved { name: "Float" }` (decision #8: no stdlib auto-import). Same pattern as the corpus fixtures and earlier resolver_locals tests: add a `type Float\n    v : Float` stub to the lib fixture. The test then passes unchanged — Tasks 1-15 do compose.
+
 - [ ] **Step 1: Write the failing test**
 
 Append to `tests/resolver_modules.rs`:
