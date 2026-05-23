@@ -26,3 +26,22 @@ fn unknown_var_is_error() {
         ErrorKind::Unresolved { name } if name == "unknownName"
     )));
 }
+
+#[test]
+fn ctor_resolves() {
+    let src = "module M\n    expose Shape\n\ntype Shape\n    Circle\n        radius : Float\n    Rect\n        width : Float\n        height : Float\n\nmkCircle = Circle(radius = 1.0)\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    use i_lang::resolve::DefKind;
+    assert!(
+        res.defs
+            .iter()
+            .any(|d| d.name == "Circle" && matches!(d.kind, DefKind::Ctor { .. }))
+    );
+    let ctor_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::Ctor(_)))
+        .collect();
+    assert_eq!(ctor_refs.len(), 1);
+}

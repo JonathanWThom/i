@@ -1,5 +1,5 @@
 use super::types::{DefId, DefInfo, DefKind, Resolution};
-use crate::ast::{Decl, DeclKind, File};
+use crate::ast::{Decl, DeclKind, File, TypeBody, TypeMember};
 use crate::error::{Error, ErrorKind};
 use crate::span::Span;
 use std::collections::HashMap;
@@ -28,9 +28,24 @@ fn collect_decl(
                 push_def(res, name.clone(), DefKind::Value, decl.span);
             }
         }
-        DeclKind::TypeDecl { name, .. } => {
+        DeclKind::TypeDecl { name, body, .. } => {
             check_dup(name, decl.span, type_seen, errors);
+            let type_id = DefId(res.defs.len() as u32);
             push_def(res, name.clone(), DefKind::Type, decl.span);
+            if let TypeBody::Block(members) = body {
+                for m in members {
+                    if let TypeMember::Variant { name: vname, .. } = m {
+                        check_dup(vname, decl.span, value_seen, errors);
+                        let id = DefId(res.defs.len() as u32);
+                        res.defs.push(DefInfo {
+                            id,
+                            name: vname.clone(),
+                            kind: DefKind::Ctor { of_type: type_id },
+                            span: decl.span,
+                        });
+                    }
+                }
+            }
         }
         DeclKind::TraitDecl { name, .. } => {
             check_dup(name, decl.span, type_seen, errors);

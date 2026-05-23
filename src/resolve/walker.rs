@@ -18,10 +18,8 @@ fn walk_decl(decl: &Decl, res: &mut Resolution, errors: &mut Vec<Error>) {
 fn walk_expr(e: &Expr, res: &mut Resolution, errors: &mut Vec<Error>) {
     match &e.node {
         ExprKind::Var(name) => resolve_var(name, e.span, res, errors),
-        ExprKind::IntLit(_)
-        | ExprKind::FloatLit(_)
-        | ExprKind::StringLit(_)
-        | ExprKind::Ctor(_) => {}
+        ExprKind::IntLit(_) | ExprKind::FloatLit(_) | ExprKind::StringLit(_) => {}
+        ExprKind::Ctor(name) => resolve_ctor(name, e.span, res, errors),
         ExprKind::Paren(inner) => walk_expr(inner, res, errors),
         ExprKind::BinOp { lhs, rhs, .. } => {
             walk_expr(lhs, res, errors);
@@ -29,6 +27,18 @@ fn walk_expr(e: &Expr, res: &mut Resolution, errors: &mut Vec<Error>) {
         }
         ExprKind::UnaryOp { expr, .. } => walk_expr(expr, res, errors),
         ExprKind::List(items) => items.iter().for_each(|i| walk_expr(i, res, errors)),
+        ExprKind::Construct { type_name, fields } => {
+            resolve_type_or_ctor(type_name, e.span, res, errors);
+            for kw in fields {
+                walk_expr(&kw.value, res, errors);
+            }
+        }
+        ExprKind::Update { value, fields } => {
+            walk_expr(value, res, errors);
+            for kw in fields {
+                walk_expr(&kw.value, res, errors);
+            }
+        }
         _ => {}
     }
 }
@@ -40,6 +50,40 @@ fn resolve_var(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Er
         .find(|d| d.name == name && matches!(d.kind, DefKind::Value))
     {
         res.refs.insert(span, ResolvedName::TopLevel(def.id));
+    } else {
+        errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
+    }
+}
+
+fn resolve_ctor(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Error>) {
+    if let Some(def) = res
+        .defs
+        .iter()
+        .find(|d| d.name == name && matches!(d.kind, DefKind::Ctor { .. }))
+    {
+        res.refs.insert(span, ResolvedName::Ctor(def.id));
+    } else {
+        errors.push(Error {
+            span,
+            kind: ErrorKind::Unresolved {
+                name: name.to_string(),
+            },
+        });
+    }
+}
+
+fn resolve_type_or_ctor(name: &str, span: Span, res: &mut Resolution, errors: &mut Vec<Error>) {
+    if let Some(def) = res.defs.iter().find(|d| d.name == name) {
+        let resolved = match def.kind {
+            DefKind::Ctor { .. } => ResolvedName::Ctor(def.id),
+            _ => ResolvedName::TopLevel(def.id),
+        };
+        res.refs.insert(span, resolved);
     } else {
         errors.push(Error {
             span,
