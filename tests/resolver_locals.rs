@@ -29,7 +29,7 @@ fn unknown_var_is_error() {
 
 #[test]
 fn ctor_resolves() {
-    let src = "module M\n    expose Shape\n\ntype Shape\n    Circle\n        radius : Float\n    Rect\n        width : Float\n        height : Float\n\nmkCircle = Circle(radius = 1.0)\n";
+    let src = "module M\n    expose Shape\n\ntype Float\n    v : Float\n\ntype Shape\n    Circle\n        radius : Float\n    Rect\n        width : Float\n        height : Float\n\nmkCircle = Circle(radius = 1.0)\n";
     let file = parse(&lex(src).unwrap()).unwrap();
     let res = resolve_file(&file).unwrap();
     use i_lang::resolve::DefKind;
@@ -122,7 +122,7 @@ fn block_let_binding_not_visible_earlier() {
 
 #[test]
 fn self_resolves_in_method() {
-    let src = "module M\n    expose Point\n\ntype Point\n    x : Float\n    y : Float\n    sumXY = self.x + self.y\n";
+    let src = "module M\n    expose Point\n\ntype Float\n    v : Float\n\ntype Point\n    x : Float\n    y : Float\n    sumXY = self.x + self.y\n";
     let file = parse(&lex(src).unwrap()).unwrap();
     let res = resolve_file(&file).unwrap();
     let self_refs: Vec<_> = res
@@ -142,4 +142,29 @@ fn self_not_in_scope_outside_method() {
         &e.kind,
         ErrorKind::Unresolved { name } if name == "self"
     )));
+}
+
+#[test]
+fn type_in_annotation_unresolved() {
+    let src = "module M\n    expose Point\n\ntype Point\n    x : Float\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let errs = resolve_file(&file).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        ErrorKind::Unresolved { name } if name == "Float"
+    )));
+}
+
+#[test]
+fn known_type_resolves_in_annotation() {
+    let src = "module M\n    expose pi\n\ntype Foo\n    dummy : Foo\n\npi : Foo\npi = 3\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    // Two refs to Foo: one in the field type, one in pi's annotation.
+    let type_refs: Vec<_> = res
+        .refs
+        .values()
+        .filter(|r| matches!(r, ResolvedName::TopLevel(_)))
+        .collect();
+    assert_eq!(type_refs.len(), 2);
 }

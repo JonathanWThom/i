@@ -14,7 +14,7 @@ fn empty_file_resolves() {
 
 #[test]
 fn collects_multiple_top_level() {
-    let src = "module M\n    expose x, y\n\nx = 1\ny = 2\n\ntype Pair\n    a : Int\n    b : Int\n";
+    let src = "module M\n    expose x, y\n\nx = 1\ny = 2\n\ntype Int\n    v : Int\n\ntype Pair\n    a : Int\n    b : Int\n";
     let file = parse(&lex(src).unwrap()).unwrap();
     let res = resolve_file(&file).unwrap();
     let names: Vec<&str> = res.defs.iter().map(|d| d.name.as_str()).collect();

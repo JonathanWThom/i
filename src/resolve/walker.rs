@@ -19,8 +19,14 @@ impl<'a> Walker<'a> {
 
     fn walk_decl(&mut self, decl: &Decl) {
         match &decl.node {
-            DeclKind::Binding { value: Some(v), .. } => self.walk_expr(v),
-            DeclKind::Binding { value: None, .. } => {}
+            DeclKind::Binding { ty, value, .. } => {
+                if let Some(t) = ty {
+                    self.walk_type(t);
+                }
+                if let Some(v) = value {
+                    self.walk_expr(v);
+                }
+            }
             DeclKind::TypeDecl { body, .. } => self.walk_type_body(body),
             DeclKind::TraitDecl { methods, .. } | DeclKind::ImplDecl { methods, .. } => {
                 for m in methods {
@@ -32,28 +38,82 @@ impl<'a> Walker<'a> {
     }
 
     fn walk_type_body(&mut self, body: &crate::ast::TypeBody) {
-        use crate::ast::{TypeBody, TypeMember, VariantBody};
+        use crate::ast::TypeBody;
         match body {
-            TypeBody::Newtype(_) => {}
+            TypeBody::Newtype(t) => self.walk_type(t),
             TypeBody::Block(members) => {
                 for m in members {
-                    match m {
-                        TypeMember::Field { .. } => {}
-                        TypeMember::Method(d) => self.walk_method(d),
-                        TypeMember::Variant {
-                            body: VariantBody::Fields(sub),
-                            ..
-                        } => {
-                            for inner in sub {
-                                if let TypeMember::Method(d) = inner {
-                                    self.walk_method(d);
-                                }
-                            }
-                        }
-                        TypeMember::Variant { .. } => {}
-                    }
+                    self.walk_type_member(m);
                 }
             }
+        }
+    }
+
+    fn walk_type_member(&mut self, m: &crate::ast::TypeMember) {
+        use crate::ast::{TypeMember, VariantBody};
+        match m {
+            TypeMember::Field { ty, .. } => self.walk_type(ty),
+            TypeMember::Method(d) => self.walk_method(d),
+            TypeMember::Variant { body, .. } => match body {
+                VariantBody::Bare => {}
+                VariantBody::Single(t) => self.walk_type(t),
+                VariantBody::Fields(sub) => {
+                    for inner in sub {
+                        self.walk_type_member(inner);
+                    }
+                }
+            },
+        }
+    }
+
+    fn walk_type(&mut self, t: &crate::ast::Type) {
+        use crate::ast::{EffectRow, TypeKind};
+        match &t.node {
+            TypeKind::Var(_) => {}
+            TypeKind::Named { name, args } => {
+                self.resolve_type_name(name, t.span);
+                for a in args {
+                    self.walk_type(a);
+                }
+            }
+            TypeKind::Function {
+                params,
+                effect,
+                result,
+            } => {
+                for p in params {
+                    self.walk_type(p);
+                }
+                if let Some(EffectRow::Named(names)) = effect {
+                    for n in names {
+                        self.resolve_type_name(n, t.span);
+                    }
+                }
+                self.walk_type(result);
+            }
+            TypeKind::Tuple(items) => {
+                for i in items {
+                    self.walk_type(i);
+                }
+            }
+        }
+    }
+
+    fn resolve_type_name(&mut self, name: &str, span: Span) {
+        if let Some(def) = self
+            .res
+            .defs
+            .iter()
+            .find(|d| d.name == name && matches!(d.kind, DefKind::Type | DefKind::Trait))
+        {
+            self.res.refs.insert(span, ResolvedName::TopLevel(def.id));
+        } else {
+            self.errors.push(Error {
+                span,
+                kind: ErrorKind::Unresolved {
+                    name: name.to_string(),
+                },
+            });
         }
     }
 
