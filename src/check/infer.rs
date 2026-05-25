@@ -412,6 +412,151 @@ impl<'a> Infer<'a> {
         Ty::Var(self.fresh())
     }
 
+    fn infer_ctor_pattern(&mut self, p: &Pattern, name: &str, args: &[Pattern]) -> PatternResult {
+        let ctor_id = match self.res.refs.get(&p.span).cloned() {
+            Some(ResolvedName::Ctor(id)) => id,
+            _ => {
+                self.errors.push(Error {
+                    span: p.span,
+                    kind: crate::error::ErrorKind::Unresolved {
+                        name: name.to_string(),
+                    },
+                });
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let scheme = match self.schemes.get(&ctor_id).cloned() {
+            Some(s) => s,
+            None => {
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let inst = self.instantiate(scheme);
+        let (payload_tys, result_ty) = match inst {
+            Ty::Fun(ps, r) => (ps, *r),
+            other => (Vec::new(), other),
+        };
+        if payload_tys.len() != args.len() {
+            self.errors.push(Error {
+                span: p.span,
+                kind: crate::error::ErrorKind::ArityMismatch {
+                    expected: payload_tys.len(),
+                    found: args.len(),
+                },
+            });
+        }
+        let mut bindings = Vec::new();
+        for (pt, sub_pat) in payload_tys.iter().zip(args.iter()) {
+            let sub = self.infer_pattern(sub_pat);
+            if let Err(ue) = unify(&mut self.subst, pt, &sub.ty) {
+                self.errors
+                    .push(crate::check::unify_error_to_error(sub_pat.span, ue));
+            }
+            bindings.extend(sub.bindings);
+        }
+        PatternResult {
+            ty: result_ty,
+            bindings,
+        }
+    }
+
+    fn infer_record_pattern(
+        &mut self,
+        p: &Pattern,
+        type_name: &str,
+        fields: &[crate::ast::FieldPat],
+    ) -> PatternResult {
+        let type_def_id = match self.res.refs.get(&p.span).cloned() {
+            Some(ResolvedName::TopLevel(id)) => id,
+            Some(ResolvedName::Ctor(id)) => match self.registry.ctor_to_type.get(&id).cloned() {
+                Some(parent) => parent,
+                None => {
+                    return PatternResult {
+                        ty: Ty::Var(self.fresh()),
+                        bindings: vec![],
+                    };
+                }
+            },
+            _ => {
+                self.errors.push(Error {
+                    span: p.span,
+                    kind: crate::error::ErrorKind::Unresolved {
+                        name: type_name.to_string(),
+                    },
+                });
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let info = match self.registry.types.get(&type_def_id).cloned() {
+            Some(i) => i,
+            None => {
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let decl_fields = match &info.body {
+            crate::check::registry::TypeDeclBody::Record(fs) => fs.clone(),
+            _ => {
+                self.errors.push(Error {
+                    span: p.span,
+                    kind: crate::error::ErrorKind::UnknownType {
+                        name: type_name.to_string(),
+                    },
+                });
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let mut inst: Subst = HashMap::new();
+        let mut result_args: Vec<Ty> = Vec::with_capacity(info.params.len());
+        for v in &info.params {
+            let fresh = Ty::Var(self.fresh());
+            inst.insert(*v, fresh.clone());
+            result_args.push(fresh);
+        }
+        let instantiated: Vec<(String, Ty)> = decl_fields
+            .iter()
+            .map(|f| (f.name.clone(), apply_subst(&f.ty, &inst)))
+            .collect();
+        let mut bindings = Vec::new();
+        for fp in fields {
+            let sub = self.infer_pattern(&fp.pattern);
+            bindings.extend(sub.bindings);
+            match instantiated.iter().find(|(n, _)| n == &fp.field) {
+                Some((_, decl_ty)) => {
+                    if let Err(ue) = unify(&mut self.subst, decl_ty, &sub.ty) {
+                        self.errors
+                            .push(crate::check::unify_error_to_error(fp.pattern.span, ue));
+                    }
+                }
+                None => self.errors.push(Error {
+                    span: fp.pattern.span,
+                    kind: crate::error::ErrorKind::UnknownField {
+                        type_name: type_name.to_string(),
+                        field: fp.field.clone(),
+                    },
+                }),
+            }
+        }
+        PatternResult {
+            ty: Ty::Con(type_def_id, result_args),
+            bindings,
+        }
+    }
+
     pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {
         let result = match &p.node {
             PatternKind::Wildcard => {
@@ -446,6 +591,10 @@ impl<'a> Infer<'a> {
                     ty,
                     bindings: vec![],
                 }
+            }
+            PatternKind::Ctor { name, args } => self.infer_ctor_pattern(p, name, args),
+            PatternKind::Record { type_name, fields } => {
+                self.infer_record_pattern(p, type_name, fields)
             }
             _ => PatternResult {
                 ty: Ty::Var(self.fresh()),
@@ -547,5 +696,147 @@ mod tests {
         let mut infer = Infer::new(&res);
         let pr = infer.infer_pattern(&pat(PatternKind::Lit(LitPat::Str("a".into()))));
         assert_eq!(pr.ty, Ty::Prim(PrimTy::String));
+    }
+
+    use crate::check::registry::{FieldInfo, TypeDeclBody, TypeDeclInfo, TypeRegistry};
+
+    fn pat_at(start: u32, kind: PatternKind) -> Pattern {
+        Spanned {
+            span: Span::new(start, start + 1),
+            node: kind,
+        }
+    }
+
+    #[test]
+    fn bare_ctor_pattern_returns_parent_type() {
+        let ctor_id = DefId(10);
+        let parent_id = DefId(11);
+        let p = pat_at(
+            0,
+            PatternKind::Ctor {
+                name: "None".into(),
+                args: vec![],
+            },
+        );
+        let mut res = Resolution::default();
+        res.refs.insert(p.span, ResolvedName::Ctor(ctor_id));
+
+        let mut infer = Infer::new(&res);
+        let a = infer.fresh();
+        infer.schemes.insert(
+            ctor_id,
+            Scheme {
+                vars: vec![a],
+                ty: Ty::Con(parent_id, vec![Ty::Var(a)]),
+            },
+        );
+
+        let pr = infer.infer_pattern(&p);
+        match pr.ty {
+            Ty::Con(id, args) => {
+                assert_eq!(id, parent_id);
+                assert_eq!(args.len(), 1);
+            }
+            other => panic!("expected Con(parent, _), got {other:?}"),
+        }
+        assert!(pr.bindings.is_empty());
+    }
+
+    #[test]
+    fn single_payload_ctor_pattern_binds_inner_var_to_payload_type() {
+        let ctor_id = DefId(10);
+        let parent_id = DefId(11);
+        let local_id = LocalId(20);
+        let inner = pat_at(2, PatternKind::Var("n".into()));
+        let inner_span = inner.span;
+        let outer = pat_at(
+            0,
+            PatternKind::Ctor {
+                name: "Some".into(),
+                args: vec![inner],
+            },
+        );
+
+        let mut res = Resolution::default();
+        res.refs.insert(outer.span, ResolvedName::Ctor(ctor_id));
+        res.refs.insert(inner_span, ResolvedName::Local(local_id));
+
+        let mut infer = Infer::new(&res);
+        let a = infer.fresh();
+        infer.schemes.insert(
+            ctor_id,
+            Scheme {
+                vars: vec![a],
+                ty: Ty::Fun(
+                    vec![Ty::Var(a)],
+                    Box::new(Ty::Con(parent_id, vec![Ty::Var(a)])),
+                ),
+            },
+        );
+
+        let pr = infer.infer_pattern(&outer);
+        match &pr.ty {
+            Ty::Con(id, args) => {
+                assert_eq!(*id, parent_id);
+                assert_eq!(args.len(), 1);
+            }
+            other => panic!("expected Con(parent, _), got {other:?}"),
+        }
+        assert_eq!(pr.bindings, vec![local_id]);
+        // After unification, the bound var and the parent's first type arg
+        // resolve to the same tyvar via the substitution.
+        let bound = infer.locals.get(&local_id).cloned().unwrap();
+        let bound = apply_subst(&bound, &infer.subst);
+        let parent_arg = match &pr.ty {
+            Ty::Con(_, args) => apply_subst(&args[0], &infer.subst),
+            other => panic!("unexpected ty: {other:?}"),
+        };
+        assert_eq!(bound, parent_arg);
+    }
+
+    #[test]
+    fn record_pattern_unifies_field_subpattern_types() {
+        let type_id = DefId(30);
+        let local_id = LocalId(40);
+        let inner = pat_at(4, PatternKind::Var("xv".into()));
+        let inner_span = inner.span;
+        let outer = pat_at(
+            0,
+            PatternKind::Record {
+                type_name: "Point".into(),
+                fields: vec![crate::ast::FieldPat {
+                    field: "x".into(),
+                    pattern: inner,
+                }],
+            },
+        );
+
+        let mut res = Resolution::default();
+        res.refs.insert(outer.span, ResolvedName::TopLevel(type_id));
+        res.refs.insert(inner_span, ResolvedName::Local(local_id));
+
+        let mut infer = Infer::new(&res);
+        let mut registry = TypeRegistry::default();
+        registry.types.insert(
+            type_id,
+            TypeDeclInfo {
+                def_id: type_id,
+                name: "Point".into(),
+                params: vec![],
+                body: TypeDeclBody::Record(vec![FieldInfo {
+                    name: "x".into(),
+                    ty: Ty::Prim(PrimTy::Int),
+                }]),
+                methods: vec![],
+            },
+        );
+        infer.registry = registry;
+
+        let pr = infer.infer_pattern(&outer);
+        assert_eq!(pr.ty, Ty::Con(type_id, vec![]));
+        assert_eq!(pr.bindings, vec![local_id]);
+        // The inner Var pattern's fresh tyvar should resolve, after subst, to Int.
+        let bound = infer.locals.get(&local_id).unwrap().clone();
+        assert_eq!(apply_subst(&bound, &infer.subst), Ty::Prim(PrimTy::Int));
     }
 }

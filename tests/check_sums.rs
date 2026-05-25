@@ -67,6 +67,30 @@ three = Some 3
 
 #[test]
 #[ignore = "needs Match (Task 20)"]
+fn match_unwraps_maybe() {
+    let src = "\
+type Maybe a
+    None
+    Some : a
+
+unwrapOr : Maybe Int, Int -> Int
+unwrapOr = m d -> m match
+    Some n -> n
+    None -> d
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    assert!(
+        typing
+            .schemes
+            .values()
+            .any(|s| matches!(&s.ty, Ty::Fun(_, _)))
+    );
+}
+
+#[test]
+#[ignore = "needs Match (Task 20)"]
 fn match_with_wildcard_on_int_type_checks() {
     let src = "\
 classify : Int -> Int
