@@ -43,8 +43,35 @@ walkthrough is a learning tool — pick the parts that actually teach.
 
 **TDD strictly.** Write the failing test first. Run it to confirm it
 fails. Write the smallest implementation that makes it pass. Run again
-to confirm green. Commit. The plan files spell this out per task; follow
-the steps as written.
+to confirm green. The plan files spell this out per task; follow the
+steps as written.
+
+**Code review before commit.** After the tests are green and `make ci`
+passes, but *before* the commit, spawn a fresh general-purpose subagent
+to review the diff. The subagent gets:
+
+- The task's plan section (verbatim).
+- `git diff --cached` (or the equivalent unstaged diff if you haven't
+  staged yet) — just the diff, not the whole files.
+- A pointer to read `CLAUDE.md` and the relevant spec docs.
+
+Ask the subagent for **2-3 findings maximum, or "clean"**. Each finding
+is `file:line — one-line problem`. Priorities, in order: TDD or spec
+violations; deviation from the plan that wasn't documented; dead code
+or over-engineering; missing WHY comments where the code is surprising;
+small simplifications. Tell the subagent NOT to propose fixes, NOT to
+re-run tests, and NOT to make edits. Identify issues only.
+
+Then report findings to me inline (still terse — 2-3 lines, or "review
+clean"). I'll decide which to fix now, defer to a follow-up, or ignore.
+Apply any fixes I approve, then commit. Don't commit until I've seen
+the review and given the go-ahead.
+
+If the review surfaces a deviation from the plan that's worth keeping,
+amend the plan in the same commit (per the existing plan-amendment
+rule).
+
+Skip the review step for documentation-only tasks (no `.rs` changes).
 
 **Pause at interactive checkpoints.** Snapshot review (`cargo insta
 review`) and any human-in-the-loop step belongs to me. Generate the

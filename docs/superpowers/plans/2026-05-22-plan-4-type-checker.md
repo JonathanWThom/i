@@ -93,6 +93,18 @@ The three-layer strategy from `docs/testing.md` (Layer 1 corpus, Layer 2 hand-wr
 
 Errors are returned as `Vec<Error>` — the checker doesn't stop at the first mismatch in independent top-level bindings. Within a single binding, the checker bails out of the offending sub-tree after recording the error and continues with a placeholder type (a fresh tyvar) so downstream code doesn't cascade.
 
+## Per-task code review (added mid-plan)
+
+Starting with Task 20, the per-task rhythm grows a review step between green tests and the commit:
+
+1. After `make ci` passes, **do not commit yet**.
+2. Spawn a fresh general-purpose subagent. Brief it with the task's plan section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` plus any relevant `docs/` page.
+3. Ask for **2-3 findings or "clean"**, in the format `file:line — one-line problem`. No proposed fixes, no re-running tests, no edits — identification only.
+4. Report findings inline in the task summary (terse — 2-3 lines, or "review clean").
+5. Wait for the user's call on which findings to address. Apply approved fixes. Then commit.
+
+See `CLAUDE.md` §"Code review before commit" for the canonical version of this rule.
+
 ---
 
 ## Decisions deferred to later plans
