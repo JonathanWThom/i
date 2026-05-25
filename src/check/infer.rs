@@ -188,6 +188,23 @@ impl<'a> Infer<'a> {
             ExprKind::FieldAccess { receiver, field } => {
                 self.infer_field_access(e, receiver, field)
             }
+            ExprKind::Match { scrutinee, arms } => {
+                let scrutinee_ty = self.infer_expr(scrutinee);
+                let result_v = self.fresh();
+                for arm in arms {
+                    let pat = self.infer_pattern(&arm.pattern);
+                    if let Err(ue) = unify(&mut self.subst, &scrutinee_ty, &pat.ty) {
+                        self.errors
+                            .push(crate::check::unify_error_to_error(arm.pattern.span, ue));
+                    }
+                    let body_ty = self.infer_expr(&arm.body);
+                    if let Err(ue) = unify(&mut self.subst, &Ty::Var(result_v), &body_ty) {
+                        self.errors
+                            .push(crate::check::unify_error_to_error(arm.body.span, ue));
+                    }
+                }
+                Ty::Var(result_v)
+            }
             ExprKind::Block(items) => {
                 use crate::ast::{BlockItem, DeclKind};
                 let mut last_ty = Ty::Prim(PrimTy::Unit);

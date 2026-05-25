@@ -2321,10 +2321,17 @@ git commit -m "Plan 4 Task 19: pattern typing for lists"
 
 Un-ignore the previously-marked tests in `tests/check_sums.rs`: `match_with_wildcard_on_int_type_checks`, `match_unwraps_maybe`.
 
+**Amended mid-execution:** these two tests pass without any Match implementation, because both have type annotations or trivial assertions that don't actually exercise Match's typing. Specifically: `match_with_wildcard_on_int_type_checks` pins `classify : Int -> Int` via annotation, so the function's scheme comes from the annotation regardless of what Match returns; `match_unwraps_maybe` only asserts that *some* scheme in the typing is a `Fun`, which is trivially true (constructor schemes like `Some : a -> Maybe a` satisfy this).
+
+To get a real TDD signal for Match, add two stronger tests:
+
+- `match_infers_function_type_from_arms_without_annotation` — define `intOf = m -> m match Some n -> n; None -> 0` with no annotation. Assert `intOf : Maybe Int -> Int`. This *requires* Match's scrutinee-unification (drives `m : Maybe _`) and arm-body-unification (drives result `: Int`) to all fire.
+- `match_arms_with_mismatched_body_types_errors` — define `bad : Maybe Int -> Int` (annotation pins return), arms `Some n -> n` (Int) and `None -> "hi"` (String). Assert a `TypeMismatch` is reported. Without the annotation, inference would happily reconcile both arms to String and report no error — so the annotation is load-bearing for the negative test.
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --test check_sums`
-Expected: FAIL — Match arm isn't implemented.
+Expected: the two stronger tests FAIL — Match arm isn't implemented (the original two still pass for the reasons above).
 
 - [ ] **Step 3: Write minimal implementation**
 
