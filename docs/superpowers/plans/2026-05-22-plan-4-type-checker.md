@@ -1493,26 +1493,25 @@ git commit -m "Plan 4 Task 11: generalisation and type annotations"
 
 ---
 
-## Task 12: Type registry and newtype declarations
+## Task 12: Newtype declarations are nominally distinct
 
 **Files:**
-- Create: `src/check/registry.rs`
-- Modify: `src/check/mod.rs` (build registry before inference)
-- Test: `tests/check_records.rs`
+- Test: `tests/check_records.rs` (create — one minimal test)
 
-- [ ] **Step 1: Write the failing test**
+**Amendment notice (scope shrunk during execution):** The original plan paired Task 12 with creating `src/check/registry.rs`. But Task 11's `lower_type` already finds user-declared types via `res.defs.iter().find(|d| &d.name == name)` and emits them as `Ty::Con(def_id, [])` — which is exactly what makes a newtype nominally distinct from the type it wraps. The minimal "is a newtype nominal?" test passes with zero additional code. Per CLAUDE.md "don't add abstractions beyond what the task requires," the registry scaffold has no consumer until Task 13's block-form types start needing per-type field/variant lookups, so registry creation moves to Task 13 where it can land alongside its first real users.
 
-`tests/check_records.rs`:
+- [ ] **Step 1: Write the test**
+
+Create `tests/check_records.rs`:
 
 ```rust
 use i_lang::check::check_file;
-use i_lang::check::types::{PrimTy, Ty};
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
 
 #[test]
-fn newtype_declaration_is_registered() {
+fn newtype_declaration_is_nominal() {
     let src = "\
 type UserId = Int
 firstUser : UserId
@@ -1520,116 +1519,25 @@ firstUser = 1
 ";
     let file = parse(&lex(src).unwrap()).unwrap();
     let res = resolve_file(&file).unwrap();
-    let errs = check_file(&file, &res);
-    // Plan 4 decision: a newtype is a distinct nominal type. `firstUser : UserId`
-    // is annotated, and the literal `1 : Int` should NOT unify with `UserId` —
-    // this should be a TypeMismatch.
-    let errs = errs.unwrap_err();
-    assert!(errs
-        .iter()
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(errs.iter()
         .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. })));
 }
-
-#[test]
-fn newtype_value_with_wrapped_construct_passes() {
-    let src = "\
-type UserId
-    value : Int
-
-firstUser : UserId
-firstUser = UserId(value = 1)
-";
-    let file = parse(&lex(src).unwrap()).unwrap();
-    let res = resolve_file(&file).unwrap();
-    let typing = check_file(&file, &res).unwrap();
-    let f = res.defs.iter().find(|d| d.name == "firstUser").unwrap();
-    let user_id_def = res.defs.iter().find(|d| d.name == "UserId").unwrap();
-    assert_eq!(typing.schemes[&f.id].ty, Ty::Con(user_id_def.id, vec![]));
-}
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test — should PASS already**
 
-Run: `cargo test --test check_records -- newtype_`
-Expected: FAIL — no `TypeRegistry`, no construction handling.
+Run: `cargo test --test check_records`
+Expected: PASS — Task 11's `lower_type` already handles this case end-to-end. (Normally TDD wants the test to fail first; here the test pins down a behaviour Task 11 incidentally delivered, and Task 13 is where the registry actually adds value.)
 
-- [ ] **Step 3: Write minimal implementation**
-
-`src/check/registry.rs`:
-
-```rust
-use crate::ast::{Decl, DeclKind, File, TypeBody, TypeMember, VariantBody};
-use crate::check::types::Ty;
-use crate::resolve::{DefId, Resolution};
-use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-pub struct FieldInfo {
-    pub name: String,
-    pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub enum PayloadShape {
-    Bare,
-    Single(Ty),
-    Record(Vec<FieldInfo>),
-}
-
-#[derive(Debug, Clone)]
-pub struct VariantInfo {
-    pub name: String,
-    pub ctor_def_id: DefId,
-    pub payload: PayloadShape,
-    pub parent: DefId,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeDeclBody {
-    Newtype(Ty),
-    Record { fields: Vec<FieldInfo> },
-    Sum { variants: Vec<VariantInfo> },
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeDeclInfo {
-    pub def_id: DefId,
-    pub name: String,
-    pub params: Vec<crate::check::types::TyVarId>,
-    pub body: TypeDeclBody,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct TypeRegistry {
-    pub types: HashMap<DefId, TypeDeclInfo>,
-    pub ctor_to_type: HashMap<DefId, DefId>,
-}
-```
-
-Populating the registry is incremental: this task only handles `TypeBody::Newtype` (the single-line form). Subsequent tasks add the block form.
-
-Hook `build_registry(file, res, infer)` into `check_file` before any expression inference. The registry construction calls `infer.lower_type(...)` to translate AST `Type` nodes into `Ty`, so it can allocate fresh tyvars for type parameters.
-
-For the single-line newtype `type UserId = Int`:
-- Look up `UserId` in `res.defs` → get the `DefId`.
-- Lower the RHS type (`Int` → `Ty::Prim(PrimTy::Int)`).
-- Insert `TypeDeclInfo { def_id, name: "UserId", params: vec![], body: TypeDeclBody::Newtype(Ty::Prim(Int)) }`.
-
-The annotation `firstUser : UserId` lowers via `lower_type`. Make `lower_type` consult the registry for nominal types: if the name matches a registered type, build `Ty::Con(def_id, args)`. Newtypes are still represented as `Ty::Con(def_id, vec![])` — the wrapped type isn't unwrapped during unification, which is exactly what makes them nominally distinct.
-
-For the second test (block-form newtype with `value : Int`), this needs the record-fields path from Task 13. Mark the test `#[ignore]` for Task 12 if needed and un-ignore in Task 13. (Plan note: deciding which test reaches green when is fine — the goal is forward progress.)
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `cargo test --test check_records -- newtype_declaration_is_registered`
-Expected: PASS (first test). Second test ignored until Task 13.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add src/check/ tests/check_records.rs
-git commit -m "Plan 4 Task 12: type registry and newtype declarations"
+git add tests/check_records.rs docs/superpowers/plans/2026-05-22-plan-4-type-checker.md
+git commit -m "Plan 4 Task 12: pin newtype nominal distinctness"
 ```
+
+Fold the plan-amendment diff (scope shrunk, registry creation deferred to Task 13) into the same commit.
 
 ---
 
