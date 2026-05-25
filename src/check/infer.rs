@@ -557,6 +557,38 @@ impl<'a> Infer<'a> {
         }
     }
 
+    fn infer_list_pattern(&mut self, p: &Pattern, items: &[Pattern]) -> PatternResult {
+        let list_def_id = match self.res.defs.iter().find(|d| d.name == "List") {
+            Some(d) => d.id,
+            None => {
+                self.errors.push(Error {
+                    span: p.span,
+                    kind: crate::error::ErrorKind::UnknownType {
+                        name: "List".into(),
+                    },
+                });
+                return PatternResult {
+                    ty: Ty::Var(self.fresh()),
+                    bindings: vec![],
+                };
+            }
+        };
+        let elem_var = self.fresh();
+        let mut bindings = Vec::new();
+        for item in items {
+            let sub = self.infer_pattern(item);
+            if let Err(ue) = unify(&mut self.subst, &Ty::Var(elem_var), &sub.ty) {
+                self.errors
+                    .push(crate::check::unify_error_to_error(item.span, ue));
+            }
+            bindings.extend(sub.bindings);
+        }
+        PatternResult {
+            ty: Ty::Con(list_def_id, vec![Ty::Var(elem_var)]),
+            bindings,
+        }
+    }
+
     pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {
         let result = match &p.node {
             PatternKind::Wildcard => {
@@ -596,6 +628,7 @@ impl<'a> Infer<'a> {
             PatternKind::Record { type_name, fields } => {
                 self.infer_record_pattern(p, type_name, fields)
             }
+            PatternKind::List(items) => self.infer_list_pattern(p, items),
             _ => PatternResult {
                 ty: Ty::Var(self.fresh()),
                 bindings: vec![],
@@ -838,5 +871,84 @@ mod tests {
         // The inner Var pattern's fresh tyvar should resolve, after subst, to Int.
         let bound = infer.locals.get(&local_id).unwrap().clone();
         assert_eq!(apply_subst(&bound, &infer.subst), Ty::Prim(PrimTy::Int));
+    }
+
+    use crate::resolve::{DefInfo, DefKind};
+
+    fn list_def(id: DefId) -> DefInfo {
+        DefInfo {
+            id,
+            name: "List".into(),
+            kind: DefKind::Type,
+            span: Span::new(0, 0),
+        }
+    }
+
+    #[test]
+    fn list_pattern_with_int_literal_items_has_list_int_type() {
+        let list_id = DefId(50);
+        let outer = pat_at(
+            0,
+            PatternKind::List(vec![
+                pat_at(2, PatternKind::Lit(LitPat::Int(1))),
+                pat_at(4, PatternKind::Lit(LitPat::Int(2))),
+            ]),
+        );
+
+        let mut res = Resolution::default();
+        res.defs.push(list_def(list_id));
+
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&outer);
+        assert!(pr.bindings.is_empty());
+        match pr.ty {
+            Ty::Con(id, args) => {
+                assert_eq!(id, list_id);
+                assert_eq!(args.len(), 1);
+                assert_eq!(apply_subst(&args[0], &infer.subst), Ty::Prim(PrimTy::Int));
+            }
+            other => panic!("expected Con(List, _), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn list_pattern_with_var_items_binds_both_to_same_element_type() {
+        let list_id = DefId(50);
+        let a_id = LocalId(60);
+        let b_id = LocalId(61);
+        let a_pat = pat_at(2, PatternKind::Var("a".into()));
+        let b_pat = pat_at(4, PatternKind::Var("b".into()));
+        let a_span = a_pat.span;
+        let b_span = b_pat.span;
+        let outer = pat_at(0, PatternKind::List(vec![a_pat, b_pat]));
+
+        let mut res = Resolution::default();
+        res.defs.push(list_def(list_id));
+        res.refs.insert(a_span, ResolvedName::Local(a_id));
+        res.refs.insert(b_span, ResolvedName::Local(b_id));
+
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&outer);
+        assert_eq!(pr.bindings, vec![a_id, b_id]);
+        let elem_ty = match &pr.ty {
+            Ty::Con(_, args) => apply_subst(&args[0], &infer.subst),
+            other => panic!("expected Con(List, _), got {other:?}"),
+        };
+        let a_ty = apply_subst(infer.locals.get(&a_id).unwrap(), &infer.subst);
+        let b_ty = apply_subst(infer.locals.get(&b_id).unwrap(), &infer.subst);
+        assert_eq!(a_ty, elem_ty);
+        assert_eq!(b_ty, elem_ty);
+    }
+
+    #[test]
+    fn list_pattern_when_list_type_missing_emits_unknown_type_error() {
+        let outer = pat_at(0, PatternKind::List(vec![]));
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let _ = infer.infer_pattern(&outer);
+        assert!(infer.errors.iter().any(|e| matches!(
+            &e.kind,
+            crate::error::ErrorKind::UnknownType { name } if name == "List"
+        )));
     }
 }
