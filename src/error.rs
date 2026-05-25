@@ -70,4 +70,8 @@ pub enum ErrorKind {
         type_name: String,
         field: String,
     },
+    CannotAccessMember {
+        ty: String,
+        member: String,
+    },
 }

@@ -185,7 +185,11 @@ impl<'a> Walker<'a> {
     fn walk_method(&mut self, decl: &Decl) {
         if let DeclKind::Binding { value: Some(v), .. } = &decl.node {
             self.scope.push_frame();
-            let _ = self.scope.push_local("self");
+            if let Ok(self_id) = self.scope.push_local("self") {
+                self.res
+                    .refs
+                    .insert(decl.span, ResolvedName::Local(self_id));
+            }
             self.walk_expr(v);
             self.scope.pop_frame();
         }

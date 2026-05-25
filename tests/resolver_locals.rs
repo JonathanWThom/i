@@ -131,7 +131,8 @@ fn self_resolves_in_method() {
         .values()
         .filter(|r| matches!(r, ResolvedName::Local(_)))
         .collect();
-    assert_eq!(self_refs.len(), 2);
+    // self binding site (recorded at the method's decl.span) + 2 uses = 3.
+    assert_eq!(self_refs.len(), 3);
 }
 
 #[test]

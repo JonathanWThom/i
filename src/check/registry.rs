@@ -1,6 +1,12 @@
-use crate::check::types::{Ty, TyVarId};
+use crate::check::types::{Scheme, Ty, TyVarId};
 use crate::resolve::DefId;
 use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct MethodInfo {
+    pub name: String,
+    pub scheme: Scheme,
+}
 
 #[derive(Debug, Clone)]
 pub struct FieldInfo {
@@ -36,6 +42,7 @@ pub struct TypeDeclInfo {
     pub name: String,
     pub params: Vec<TyVarId>,
     pub body: TypeDeclBody,
+    pub methods: Vec<MethodInfo>,
 }
 
 #[derive(Debug, Default, Clone)]

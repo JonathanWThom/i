@@ -95,6 +95,48 @@ p2 = p1(x = 5.0)
 }
 
 #[test]
+fn field_access_returns_field_type() {
+    // No annotation: xCoord's type must be inferred purely from the field access.
+    let src = "\
+type Point
+    x : Float
+    y : Float
+
+xCoord = (Point(x = 1.0, y = 2.0)).x
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let x = res.defs.iter().find(|d| d.name == "xCoord").unwrap();
+    assert_eq!(
+        typing.schemes[&x.id].ty,
+        Ty::Prim(i_lang::check::types::PrimTy::Float)
+    );
+}
+
+#[test]
+fn method_call_resolves_to_method_result_type() {
+    // Method body uses self.x (field access). No annotation on xCoord —
+    // dispatch + body inference must produce Float on their own.
+    let src = "\
+type Point
+    x : Float
+    y : Float
+    getX = self.x
+
+xCoord = (Point(x = 3.0, y = 4.0)).getX
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let x = res.defs.iter().find(|d| d.name == "xCoord").unwrap();
+    assert_eq!(
+        typing.schemes[&x.id].ty,
+        Ty::Prim(i_lang::check::types::PrimTy::Float)
+    );
+}
+
+#[test]
 fn newtype_block_with_construct_passes() {
     // Deferred from Task 12: block-form newtype + record construction.
     let src = "\

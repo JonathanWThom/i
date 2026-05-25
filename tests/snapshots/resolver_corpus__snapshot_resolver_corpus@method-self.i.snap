@@ -10,5 +10,6 @@ refs:
   46..51 -> TopLevel(DefId(0))
   72..77 -> TopLevel(DefId(0))
   86..91 -> TopLevel(DefId(0))
+  96..119 -> Local(LocalId(0))
   104..108 -> Local(LocalId(0))
   113..117 -> Local(LocalId(0))

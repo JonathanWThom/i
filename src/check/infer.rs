@@ -170,8 +170,12 @@ impl<'a> Infer<'a> {
                 }
                 Ty::Var(result_v)
             }
+            ExprKind::Paren(inner) => self.infer_expr(inner),
             ExprKind::Construct { type_name, fields } => self.infer_construct(e, type_name, fields),
             ExprKind::Update { value, fields } => self.infer_update(e, value, fields),
+            ExprKind::FieldAccess { receiver, field } => {
+                self.infer_field_access(e, receiver, field)
+            }
             ExprKind::Block(items) => {
                 use crate::ast::{BlockItem, DeclKind};
                 let mut last_ty = Ty::Prim(PrimTy::Unit);
@@ -323,6 +327,77 @@ impl<'a> Infer<'a> {
             }
         }
         Ty::Con(def_id, type_args)
+    }
+
+    fn infer_field_access(&mut self, e: &Expr, receiver: &Expr, field: &str) -> Ty {
+        let recv_ty = self.infer_expr(receiver);
+        let resolved = apply_subst(&recv_ty, &self.subst);
+        let (parent_def_id, type_args) = match &resolved {
+            Ty::Con(id, args) => (*id, args.clone()),
+            _ => {
+                self.errors.push(Error {
+                    span: receiver.span,
+                    kind: crate::error::ErrorKind::CannotAccessMember {
+                        ty: format!("{:?}", resolved),
+                        member: field.to_string(),
+                    },
+                });
+                return Ty::Var(self.fresh());
+            }
+        };
+        let info = match self.registry.types.get(&parent_def_id).cloned() {
+            Some(info) => info,
+            None => return Ty::Var(self.fresh()),
+        };
+
+        // Substitution from the type's params to the receiver's type args, used
+        // to instantiate both field types and method schemes.
+        let mut inst: Subst = HashMap::new();
+        for (p, a) in info.params.iter().zip(type_args.iter()) {
+            inst.insert(*p, a.clone());
+        }
+
+        // Field lookup (records only — sum-payload field access is later work).
+        if let crate::check::registry::TypeDeclBody::Record(fields) = &info.body
+            && let Some(f) = fields.iter().find(|f| f.name == field)
+        {
+            return apply_subst(&f.ty, &inst);
+        }
+
+        // Method lookup.
+        if let Some(m) = info.methods.iter().find(|m| m.name == field) {
+            let mut method_inst = inst.clone();
+            for v in &m.scheme.vars {
+                if !method_inst.contains_key(v) {
+                    method_inst.insert(*v, Ty::Var(self.fresh()));
+                }
+            }
+            let instantiated = apply_subst(&m.scheme.ty, &method_inst);
+            if let Ty::Fun(params, ret) = instantiated {
+                if params.is_empty() {
+                    return *ret;
+                }
+                if let Err(ue) = unify(&mut self.subst, &params[0], &recv_ty) {
+                    self.errors
+                        .push(crate::check::unify_error_to_error(receiver.span, ue));
+                }
+                let rest = params[1..].to_vec();
+                if rest.is_empty() {
+                    return *ret;
+                }
+                return Ty::Fun(rest, ret);
+            }
+            return instantiated;
+        }
+
+        self.errors.push(Error {
+            span: e.span,
+            kind: crate::error::ErrorKind::UnknownField {
+                type_name: info.name.clone(),
+                field: field.to_string(),
+            },
+        });
+        Ty::Var(self.fresh())
     }
 
     pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {

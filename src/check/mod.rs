@@ -10,7 +10,9 @@ use crate::ast::{
     TypeBody, TypeMember, VariantBody,
 };
 use crate::check::infer::Infer;
-use crate::check::registry::{FieldInfo, PayloadShape, TypeDeclBody, TypeDeclInfo, VariantInfo};
+use crate::check::registry::{
+    FieldInfo, MethodInfo, PayloadShape, TypeDeclBody, TypeDeclInfo, VariantInfo,
+};
 use crate::check::unify::{UnifyError, apply_subst, unify};
 use crate::error::{Error, ErrorKind};
 use crate::resolve::{DefId, DefKind, Resolution, ResolvedName};
@@ -491,7 +493,83 @@ fn build_registry(file: &File, infer: &mut Infer) {
             name: name.clone(),
             params: param_tyvars,
             body: body_info,
+            methods: Vec::new(),
         };
         infer.registry.types.insert(type_def_id, info);
+    }
+
+    // Second pass: methods. Run after every type is in the registry so a
+    // method body can field-access another type that's declared later.
+    for decl in &file.decls {
+        let DeclKind::TypeDecl {
+            name,
+            body: TypeBody::Block(members),
+            ..
+        } = &decl.node
+        else {
+            continue;
+        };
+        let Some(type_def) = infer
+            .res
+            .defs
+            .iter()
+            .find(|d| &d.name == name && matches!(d.kind, DefKind::Type))
+        else {
+            continue;
+        };
+        let parent_def_id = type_def.id;
+        let parent_params = infer
+            .registry
+            .types
+            .get(&parent_def_id)
+            .map(|i| i.params.clone())
+            .unwrap_or_default();
+        let parent_ty = Ty::Con(
+            parent_def_id,
+            parent_params.iter().map(|&v| Ty::Var(v)).collect(),
+        );
+
+        for m in members {
+            let TypeMember::Method(method_decl) = m else {
+                continue;
+            };
+            let DeclKind::Binding {
+                name: mname,
+                value: Some(body),
+                ..
+            } = &method_decl.node
+            else {
+                continue;
+            };
+            // Resolver records self's LocalId at method_decl.span.
+            let self_local = match infer.res.refs.get(&method_decl.span) {
+                Some(ResolvedName::Local(id)) => *id,
+                _ => continue,
+            };
+            infer.locals.insert(self_local, parent_ty.clone());
+            let body_ty = infer.infer_expr(body);
+            let result_resolved = apply_subst(&body_ty, &infer.subst);
+            let fun_ty = Ty::Fun(vec![parent_ty.clone()], Box::new(result_resolved.clone()));
+
+            // Generalise: bind parent params + any other free tyvars in the
+            // method's type that don't escape into env (env_free is empty here
+            // because methods get processed before top-level SCCs).
+            let mut quantified: Vec<TyVarId> = parent_params.clone();
+            for v in free_vars(&fun_ty) {
+                if !quantified.contains(&v) {
+                    quantified.push(v);
+                }
+            }
+            let scheme = Scheme {
+                vars: quantified,
+                ty: fun_ty,
+            };
+            if let Some(info) = infer.registry.types.get_mut(&parent_def_id) {
+                info.methods.push(MethodInfo {
+                    name: mname.clone(),
+                    scheme,
+                });
+            }
+        }
     }
 }
