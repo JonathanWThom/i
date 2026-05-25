@@ -1,4 +1,5 @@
 use crate::ast::{Expr, ExprKind, Pattern, PatternKind};
+use crate::check::registry::TypeRegistry;
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::{apply_subst, unify};
 use crate::error::Error;
@@ -18,6 +19,7 @@ pub struct Infer<'a> {
     pub subst: Subst,
     pub locals: HashMap<LocalId, Ty>,
     pub schemes: HashMap<DefId, Scheme>,
+    pub registry: TypeRegistry,
     pub errors: Vec<Error>,
     next_var: u32,
     expr_types: HashMap<Span, Ty>,
@@ -31,6 +33,7 @@ impl<'a> Infer<'a> {
             subst: Subst::new(),
             locals: HashMap::new(),
             schemes: HashMap::new(),
+            registry: TypeRegistry::default(),
             errors: Vec::new(),
             next_var: 0,
             expr_types: HashMap::new(),
@@ -62,9 +65,20 @@ impl<'a> Infer<'a> {
     }
 
     pub fn lower_type(&mut self, t: &crate::ast::Type) -> Ty {
+        self.lower_type_in_scope(t, &HashMap::new())
+    }
+
+    pub fn lower_type_in_scope(
+        &mut self,
+        t: &crate::ast::Type,
+        ctx: &HashMap<String, TyVarId>,
+    ) -> Ty {
         use crate::ast::{EffectRow, TypeKind};
         match &t.node {
-            TypeKind::Var(_) => Ty::Var(self.fresh()),
+            TypeKind::Var(name) => match ctx.get(name) {
+                Some(v) => Ty::Var(*v),
+                None => Ty::Var(self.fresh()),
+            },
             TypeKind::Named { name, args } => match name.as_str() {
                 "Int" => Ty::Prim(PrimTy::Int),
                 "Float" => Ty::Prim(PrimTy::Float),
@@ -74,7 +88,12 @@ impl<'a> Infer<'a> {
                 _ => match self.res.defs.iter().find(|d| &d.name == name) {
                     Some(d) => {
                         let id = d.id;
-                        Ty::Con(id, args.iter().map(|a| self.lower_type(a)).collect())
+                        Ty::Con(
+                            id,
+                            args.iter()
+                                .map(|a| self.lower_type_in_scope(a, ctx))
+                                .collect(),
+                        )
                     }
                     None => {
                         self.errors.push(Error {
@@ -96,8 +115,11 @@ impl<'a> Infer<'a> {
                         kind: crate::error::ErrorKind::EffectsNotYetImplemented,
                     });
                 }
-                let ps: Vec<Ty> = params.iter().map(|p| self.lower_type(p)).collect();
-                let r = self.lower_type(result);
+                let ps: Vec<Ty> = params
+                    .iter()
+                    .map(|p| self.lower_type_in_scope(p, ctx))
+                    .collect();
+                let r = self.lower_type_in_scope(result, ctx);
                 Ty::Fun(ps, Box::new(r))
             }
             TypeKind::Tuple(_) => {

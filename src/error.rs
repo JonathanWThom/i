@@ -56,4 +56,7 @@ pub enum ErrorKind {
     },
     EffectsNotYetImplemented,
     TuplesNotYetImplemented,
+    MixedFieldsAndVariants {
+        name: String,
+    },
 }

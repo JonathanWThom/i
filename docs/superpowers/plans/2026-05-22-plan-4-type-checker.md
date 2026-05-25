@@ -1544,9 +1544,13 @@ Fold the plan-amendment diff (scope shrunk, registry creation deferred to Task 1
 ## Task 13: Record and sum type declarations
 
 **Files:**
-- Modify: `src/check/registry.rs` (handle `TypeBody::Block` — fields, variants)
-- Modify: `src/check/mod.rs` (registry build pass walks block-form types)
-- Test: `tests/check_sums.rs`, expand `tests/check_records.rs`
+- Create: `src/check/registry.rs` (the registry deferred from Task 12)
+- Modify: `src/check/infer.rs` (registry field on `Infer`; `lower_type_in_scope` for per-decl tyvar param context)
+- Modify: `src/check/mod.rs` (`build_registry` walks newtype + block-form types, registers ctor schemes)
+- Modify: `src/error.rs` (`MixedFieldsAndVariants`)
+- Test: `tests/check_sums.rs` (create)
+
+**Amendment notice:** Registry creation moved here from Task 12 (see Task 12's amendment note). The "un-ignore `newtype_value_with_wrapped_construct_passes`" step the original Task 13 mentioned is N/A — Task 12 didn't add that test as `#[ignore]`; it'll land directly in Task 14 alongside the rest of record construction.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1579,8 +1583,6 @@ type Shape
     assert!(typing.schemes.contains_key(&rect.id));
 }
 ```
-
-And un-ignore `newtype_value_with_wrapped_construct_passes` in `tests/check_records.rs`.
 
 - [ ] **Step 2: Run test to verify it fails**
 

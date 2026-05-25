@@ -1,4 +1,5 @@
 pub mod infer;
+pub mod registry;
 pub mod types;
 pub mod unify;
 
@@ -6,16 +7,19 @@ pub use types::*;
 
 use crate::ast::{
     BlockItem, Decl, DeclKind, Expr, ExprKind, File, KwArg, MatchArm, Pattern, PatternKind, Type,
+    TypeBody, TypeMember, VariantBody,
 };
 use crate::check::infer::Infer;
+use crate::check::registry::{FieldInfo, PayloadShape, TypeDeclBody, TypeDeclInfo, VariantInfo};
 use crate::check::unify::{UnifyError, apply_subst, unify};
 use crate::error::{Error, ErrorKind};
-use crate::resolve::{DefId, Resolution, ResolvedName};
+use crate::resolve::{DefId, DefKind, Resolution, ResolvedName};
 use crate::span::Span;
 use std::collections::{HashMap, HashSet};
 
 pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
     let mut infer = Infer::new(res);
+    build_registry(file, &mut infer);
 
     // Index sig-only bindings by name so multi-line `x : T` / `x = v` pairs can
     // be merged. Inline `x : T = v` keeps its annotation directly on the value
@@ -346,4 +350,148 @@ fn tarjan_scc(adj: &[Vec<usize>]) -> Vec<Vec<usize>> {
     }
 
     result
+}
+
+fn build_registry(file: &File, infer: &mut Infer) {
+    for decl in &file.decls {
+        let DeclKind::TypeDecl { name, params, body } = &decl.node else {
+            continue;
+        };
+        let Some(type_def) = infer
+            .res
+            .defs
+            .iter()
+            .find(|d| &d.name == name && matches!(d.kind, DefKind::Type))
+        else {
+            continue;
+        };
+        let type_def_id = type_def.id;
+
+        // Allocate one fresh tyvar per type parameter so every occurrence of
+        // the same param name inside this declaration unifies to the same var.
+        let mut param_ctx: HashMap<String, TyVarId> = HashMap::new();
+        let mut param_tyvars: Vec<TyVarId> = Vec::with_capacity(params.len());
+        for p in params {
+            let v = infer.fresh();
+            param_ctx.insert(p.clone(), v);
+            param_tyvars.push(v);
+        }
+        let parent_ty = Ty::Con(
+            type_def_id,
+            param_tyvars.iter().map(|&v| Ty::Var(v)).collect(),
+        );
+
+        let body_info = match body {
+            TypeBody::Newtype(t) => TypeDeclBody::Newtype(infer.lower_type_in_scope(t, &param_ctx)),
+            TypeBody::Block(members) => {
+                let mut fields: Vec<FieldInfo> = Vec::new();
+                let mut variants: Vec<VariantInfo> = Vec::new();
+                for m in members {
+                    match m {
+                        TypeMember::Field { name: fname, ty } => {
+                            let t = infer.lower_type_in_scope(ty, &param_ctx);
+                            fields.push(FieldInfo {
+                                name: fname.clone(),
+                                ty: t,
+                            });
+                        }
+                        TypeMember::Variant {
+                            name: vname,
+                            body: vbody,
+                        } => {
+                            let payload = match vbody {
+                                VariantBody::Bare => PayloadShape::Bare,
+                                VariantBody::Single(t) => {
+                                    PayloadShape::Single(infer.lower_type_in_scope(t, &param_ctx))
+                                }
+                                VariantBody::Fields(sub) => {
+                                    let mut sub_fields = Vec::new();
+                                    for sm in sub {
+                                        if let TypeMember::Field {
+                                            name: sfname,
+                                            ty: sfty,
+                                        } = sm
+                                        {
+                                            let t = infer.lower_type_in_scope(sfty, &param_ctx);
+                                            sub_fields.push(FieldInfo {
+                                                name: sfname.clone(),
+                                                ty: t,
+                                            });
+                                        }
+                                    }
+                                    PayloadShape::Record(sub_fields)
+                                }
+                            };
+                            let ctor_def_id = infer
+                                .res
+                                .defs
+                                .iter()
+                                .find(|d| {
+                                    &d.name == vname && matches!(d.kind, DefKind::Ctor { .. })
+                                })
+                                .map(|d| d.id);
+                            if let Some(ctor_id) = ctor_def_id {
+                                variants.push(VariantInfo {
+                                    name: vname.clone(),
+                                    ctor_def_id: ctor_id,
+                                    payload,
+                                    parent: type_def_id,
+                                });
+                            }
+                        }
+                        TypeMember::Method(_) => {
+                            // Method registration is Task 14/15 territory.
+                        }
+                    }
+                }
+                if !fields.is_empty() && !variants.is_empty() {
+                    infer.errors.push(Error {
+                        span: decl.span,
+                        kind: ErrorKind::MixedFieldsAndVariants { name: name.clone() },
+                    });
+                    continue;
+                }
+                if !variants.is_empty() {
+                    TypeDeclBody::Sum(variants)
+                } else {
+                    TypeDeclBody::Record(fields)
+                }
+            }
+        };
+
+        // Register constructor schemes for sum variants.
+        if let TypeDeclBody::Sum(variants) = &body_info {
+            for variant in variants {
+                let scheme_ty = match &variant.payload {
+                    PayloadShape::Bare => parent_ty.clone(),
+                    PayloadShape::Single(ty) => {
+                        Ty::Fun(vec![ty.clone()], Box::new(parent_ty.clone()))
+                    }
+                    PayloadShape::Record(fs) => Ty::Fun(
+                        fs.iter().map(|f| f.ty.clone()).collect(),
+                        Box::new(parent_ty.clone()),
+                    ),
+                };
+                infer.schemes.insert(
+                    variant.ctor_def_id,
+                    Scheme {
+                        vars: param_tyvars.clone(),
+                        ty: scheme_ty,
+                    },
+                );
+                infer
+                    .registry
+                    .ctor_to_type
+                    .insert(variant.ctor_def_id, type_def_id);
+            }
+        }
+
+        let info = TypeDeclInfo {
+            def_id: type_def_id,
+            name: name.clone(),
+            params: param_tyvars,
+            body: body_info,
+        };
+        infer.registry.types.insert(type_def_id, info);
+    }
 }
