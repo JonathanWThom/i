@@ -66,6 +66,23 @@ three = Some 3
 }
 
 #[test]
+#[ignore = "needs Match (Task 20)"]
+fn match_with_wildcard_on_int_type_checks() {
+    let src = "\
+classify : Int -> Int
+classify = n -> n match
+    0 -> 0
+    _ -> 1
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let c = res.defs.iter().find(|d| d.name == "classify").unwrap();
+    let expected = Ty::Fun(vec![Ty::Prim(PrimTy::Int)], Box::new(Ty::Prim(PrimTy::Int)));
+    assert_eq!(typing.schemes[&c.id].ty, expected);
+}
+
+#[test]
 fn ctor_payload_type_mismatch_errors() {
     let src = "\
 type Maybe a

@@ -1,4 +1,4 @@
-use crate::ast::{Expr, ExprKind, Pattern, PatternKind};
+use crate::ast::{Expr, ExprKind, LitPat, Pattern, PatternKind};
 use crate::check::registry::TypeRegistry;
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::{apply_subst, unify};
@@ -413,28 +413,47 @@ impl<'a> Infer<'a> {
     }
 
     pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {
-        let v = self.fresh();
-        let ty = Ty::Var(v);
-        self.record_pattern_type(p.span, ty.clone());
-        match &p.node {
+        let result = match &p.node {
+            PatternKind::Wildcard => {
+                let v = self.fresh();
+                PatternResult {
+                    ty: Ty::Var(v),
+                    bindings: vec![],
+                }
+            }
             PatternKind::Var(_) => {
+                let ty = Ty::Var(self.fresh());
                 if let Some(ResolvedName::Local(lid)) = self.res.refs.get(&p.span) {
                     self.locals.insert(*lid, ty.clone());
-                    return PatternResult {
+                    PatternResult {
                         ty,
                         bindings: vec![*lid],
-                    };
+                    }
+                } else {
+                    PatternResult {
+                        ty,
+                        bindings: vec![],
+                    }
                 }
+            }
+            PatternKind::Lit(lit) => {
+                let ty = match lit {
+                    LitPat::Int(_) => Ty::Prim(PrimTy::Int),
+                    LitPat::Float(_) => Ty::Prim(PrimTy::Float),
+                    LitPat::Str(_) => Ty::Prim(PrimTy::String),
+                };
                 PatternResult {
                     ty,
                     bindings: vec![],
                 }
             }
             _ => PatternResult {
-                ty,
+                ty: Ty::Var(self.fresh()),
                 bindings: vec![],
             },
-        }
+        };
+        self.record_pattern_type(p.span, result.ty.clone());
+        result
     }
 
     pub fn into_typing(self) -> Typing {
@@ -484,5 +503,49 @@ mod tests {
         infer.record_expr_type(s, Ty::Var(v));
         let typing = infer.into_typing();
         assert_eq!(typing.expr_types.get(&s), Some(&Ty::Prim(PrimTy::Int)));
+    }
+
+    use crate::ast::LitPat;
+    use crate::span::Spanned;
+
+    fn pat(kind: PatternKind) -> Pattern {
+        Spanned {
+            span: Span::new(0, 1),
+            node: kind,
+        }
+    }
+
+    #[test]
+    fn wildcard_pattern_has_fresh_type_var_and_no_bindings() {
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&pat(PatternKind::Wildcard));
+        assert!(matches!(pr.ty, Ty::Var(_)));
+        assert!(pr.bindings.is_empty());
+    }
+
+    #[test]
+    fn int_literal_pattern_is_int_typed() {
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&pat(PatternKind::Lit(LitPat::Int(0))));
+        assert_eq!(pr.ty, Ty::Prim(PrimTy::Int));
+        assert!(pr.bindings.is_empty());
+    }
+
+    #[test]
+    fn float_literal_pattern_is_float_typed() {
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&pat(PatternKind::Lit(LitPat::Float(1.5))));
+        assert_eq!(pr.ty, Ty::Prim(PrimTy::Float));
+    }
+
+    #[test]
+    fn string_literal_pattern_is_string_typed() {
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let pr = infer.infer_pattern(&pat(PatternKind::Lit(LitPat::Str("a".into()))));
+        assert_eq!(pr.ty, Ty::Prim(PrimTy::String));
     }
 }
