@@ -149,7 +149,19 @@ impl<'a> Infer<'a> {
                     .unwrap_or_else(|| Ty::Var(self.fresh())),
                 _ => Ty::Var(self.fresh()),
             },
-            ExprKind::Ctor(_) => Ty::Var(self.fresh()),
+            ExprKind::Ctor(name) => match self.res.refs.get(&e.span).cloned() {
+                Some(ResolvedName::Ctor(ctor_id)) => match self.schemes.get(&ctor_id).cloned() {
+                    Some(scheme) => self.instantiate(scheme),
+                    None => Ty::Var(self.fresh()),
+                },
+                _ => {
+                    self.errors.push(Error {
+                        span: e.span,
+                        kind: crate::error::ErrorKind::Unresolved { name: name.clone() },
+                    });
+                    Ty::Var(self.fresh())
+                }
+            },
             ExprKind::Lambda { params, body } => {
                 let mut param_tys = Vec::with_capacity(params.len());
                 for p in params {
