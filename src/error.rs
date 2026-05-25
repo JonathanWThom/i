@@ -59,4 +59,15 @@ pub enum ErrorKind {
     MixedFieldsAndVariants {
         name: String,
     },
+    UnknownType {
+        name: String,
+    },
+    UnknownField {
+        type_name: String,
+        field: String,
+    },
+    MissingField {
+        type_name: String,
+        field: String,
+    },
 }

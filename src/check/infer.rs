@@ -170,6 +170,8 @@ impl<'a> Infer<'a> {
                 }
                 Ty::Var(result_v)
             }
+            ExprKind::Construct { type_name, fields } => self.infer_construct(e, type_name, fields),
+            ExprKind::Update { value, fields } => self.infer_update(e, value, fields),
             ExprKind::Block(items) => {
                 use crate::ast::{BlockItem, DeclKind};
                 let mut last_ty = Ty::Prim(PrimTy::Unit);
@@ -200,6 +202,127 @@ impl<'a> Infer<'a> {
         };
         self.record_expr_type(e.span, ty.clone());
         ty
+    }
+
+    fn infer_construct(&mut self, e: &Expr, type_name: &str, fields: &[crate::ast::KwArg]) -> Ty {
+        let def_id = match self.res.refs.get(&e.span) {
+            Some(ResolvedName::TopLevel(id)) => *id,
+            // Ctor-result construction (sum variants) is Task 16's job.
+            _ => return Ty::Var(self.fresh()),
+        };
+        let info = match self.registry.types.get(&def_id).cloned() {
+            Some(info) => info,
+            None => return Ty::Var(self.fresh()),
+        };
+        let decl_fields = match &info.body {
+            crate::check::registry::TypeDeclBody::Record(fs) => fs.clone(),
+            _ => {
+                self.errors.push(Error {
+                    span: e.span,
+                    kind: crate::error::ErrorKind::UnknownType {
+                        name: type_name.to_string(),
+                    },
+                });
+                return Ty::Var(self.fresh());
+            }
+        };
+
+        // Instantiate the type's params with fresh tyvars; substitute through
+        // each declared field type so unification produces inferences for them.
+        let mut inst: Subst = HashMap::new();
+        let mut result_args: Vec<Ty> = Vec::with_capacity(info.params.len());
+        for p in &info.params {
+            let fresh = Ty::Var(self.fresh());
+            inst.insert(*p, fresh.clone());
+            result_args.push(fresh);
+        }
+        let instantiated: Vec<(String, Ty)> = decl_fields
+            .iter()
+            .map(|f| (f.name.clone(), apply_subst(&f.ty, &inst)))
+            .collect();
+
+        let declared_names: std::collections::HashSet<&str> =
+            instantiated.iter().map(|(n, _)| n.as_str()).collect();
+        let provided_names: std::collections::HashSet<&str> =
+            fields.iter().map(|f| f.name.as_str()).collect();
+        for missing in declared_names.difference(&provided_names) {
+            self.errors.push(Error {
+                span: e.span,
+                kind: crate::error::ErrorKind::MissingField {
+                    type_name: type_name.to_string(),
+                    field: missing.to_string(),
+                },
+            });
+        }
+        for extra in provided_names.difference(&declared_names) {
+            self.errors.push(Error {
+                span: e.span,
+                kind: crate::error::ErrorKind::UnknownField {
+                    type_name: type_name.to_string(),
+                    field: extra.to_string(),
+                },
+            });
+        }
+        for kw in fields {
+            let provided_ty = self.infer_expr(&kw.value);
+            if let Some((_, decl_ty)) = instantiated.iter().find(|(n, _)| n == &kw.name)
+                && let Err(ue) = unify(&mut self.subst, decl_ty, &provided_ty)
+            {
+                self.errors
+                    .push(crate::check::unify_error_to_error(kw.value.span, ue));
+            }
+        }
+        Ty::Con(def_id, result_args)
+    }
+
+    fn infer_update(&mut self, e: &Expr, value: &Expr, fields: &[crate::ast::KwArg]) -> Ty {
+        let value_ty = self.infer_expr(value);
+        let resolved = apply_subst(&value_ty, &self.subst);
+        let (def_id, type_args) = match &resolved {
+            Ty::Con(id, args) => (*id, args.clone()),
+            _ => return value_ty,
+        };
+        let info = match self.registry.types.get(&def_id).cloned() {
+            Some(info) => info,
+            None => return value_ty,
+        };
+        let decl_fields = match &info.body {
+            crate::check::registry::TypeDeclBody::Record(fs) => fs.clone(),
+            _ => return value_ty,
+        };
+
+        let mut inst: Subst = HashMap::new();
+        for (p, a) in info.params.iter().zip(type_args.iter()) {
+            inst.insert(*p, a.clone());
+        }
+        let instantiated: Vec<(String, Ty)> = decl_fields
+            .iter()
+            .map(|f| (f.name.clone(), apply_subst(&f.ty, &inst)))
+            .collect();
+
+        let declared_names: std::collections::HashSet<&str> =
+            instantiated.iter().map(|(n, _)| n.as_str()).collect();
+        for kw in fields {
+            if !declared_names.contains(kw.name.as_str()) {
+                self.errors.push(Error {
+                    span: e.span,
+                    kind: crate::error::ErrorKind::UnknownField {
+                        type_name: info.name.clone(),
+                        field: kw.name.clone(),
+                    },
+                });
+            }
+        }
+        for kw in fields {
+            let provided_ty = self.infer_expr(&kw.value);
+            if let Some((_, decl_ty)) = instantiated.iter().find(|(n, _)| n == &kw.name)
+                && let Err(ue) = unify(&mut self.subst, decl_ty, &provided_ty)
+            {
+                self.errors
+                    .push(crate::check::unify_error_to_error(kw.value.span, ue));
+            }
+        }
+        Ty::Con(def_id, type_args)
     }
 
     pub fn infer_pattern(&mut self, p: &Pattern) -> PatternResult {
