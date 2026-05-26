@@ -115,3 +115,68 @@ fn logical_and_requires_bool() {
             .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. }))
     );
 }
+
+#[test]
+fn empty_list_is_list_of_var() {
+    let src = "\
+type List a
+    Empty
+    Cons
+        head : a
+        tail : List a
+
+xs : List Int
+xs = []
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let xs = res.defs.iter().find(|d| d.name == "xs").unwrap();
+    let list_def = res.defs.iter().find(|d| d.name == "List").unwrap();
+    assert_eq!(
+        typing.schemes[&xs.id].ty,
+        Ty::Con(list_def.id, vec![Ty::Prim(PrimTy::Int)])
+    );
+}
+
+#[test]
+fn homogeneous_list_takes_element_type() {
+    let src = "\
+type List a
+    Empty
+    Cons
+        head : a
+        tail : List a
+
+xs = [1, 2, 3]
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let xs = res.defs.iter().find(|d| d.name == "xs").unwrap();
+    let list_def = res.defs.iter().find(|d| d.name == "List").unwrap();
+    assert_eq!(
+        typing.schemes[&xs.id].ty,
+        Ty::Con(list_def.id, vec![Ty::Prim(PrimTy::Int)])
+    );
+}
+
+#[test]
+fn heterogeneous_list_errors() {
+    let src = "\
+type List a
+    Empty
+    Cons
+        head : a
+        tail : List a
+
+xs = [1, \"hi\"]
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. }))
+    );
+}

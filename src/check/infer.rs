@@ -242,6 +242,7 @@ impl<'a> Infer<'a> {
             }
             ExprKind::BinOp { op, lhs, rhs } => self.infer_binop(e, op, lhs, rhs),
             ExprKind::UnaryOp { op, expr } => self.infer_unaryop(e, op, expr),
+            ExprKind::List(items) => self.infer_list(e, items),
             _ => Ty::Var(self.fresh()),
         };
         self.record_expr_type(e.span, ty.clone());
@@ -300,6 +301,36 @@ impl<'a> Infer<'a> {
                 Ty::Prim(PrimTy::Bool)
             }
         }
+    }
+
+    fn infer_list(&mut self, e: &Expr, items: &[Expr]) -> Ty {
+        // A list literal's type is `List elem`. `List` is an ordinary library
+        // type, not a builtin, so it must be in scope; absent it, there's no
+        // type to give the literal.
+        let Some(list_id) = self
+            .res
+            .defs
+            .iter()
+            .find(|d| d.name == "List")
+            .map(|d| d.id)
+        else {
+            self.errors.push(Error {
+                span: e.span,
+                kind: crate::error::ErrorKind::UnknownType {
+                    name: "List".into(),
+                },
+            });
+            return Ty::Var(self.fresh());
+        };
+        let elem = Ty::Var(self.fresh());
+        for item in items {
+            let it = self.infer_expr(item);
+            if let Err(ue) = unify(&mut self.subst, &elem, &it) {
+                self.errors
+                    .push(crate::check::unify_error_to_error(item.span, ue));
+            }
+        }
+        Ty::Con(list_id, vec![elem])
     }
 
     fn unify_operands(&mut self, lhs: &Ty, rhs: &Ty, span: Span) {
