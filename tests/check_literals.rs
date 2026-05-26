@@ -71,3 +71,47 @@ fn identity_lambda_has_fun_type() {
         other => panic!("expected Fun, got {:?}", other),
     }
 }
+
+#[test]
+fn int_addition_is_int() {
+    let src = "n = 1 + 2\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let n = res.defs.iter().find(|d| d.name == "n").unwrap();
+    assert_eq!(typing.schemes[&n.id].ty, Ty::Prim(PrimTy::Int));
+}
+
+#[test]
+fn mixed_int_float_addition_errors() {
+    let src = "n = 1 + 1.0\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. }))
+    );
+}
+
+#[test]
+fn comparison_returns_bool() {
+    let src = "b = 1 == 2\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).unwrap();
+    let b = res.defs.iter().find(|d| d.name == "b").unwrap();
+    assert_eq!(typing.schemes[&b.id].ty, Ty::Prim(PrimTy::Bool));
+}
+
+#[test]
+fn logical_and_requires_bool() {
+    let src = "b = 1 and 2\n";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e.kind, i_lang::error::ErrorKind::TypeMismatch { .. }))
+    );
+}

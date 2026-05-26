@@ -1,4 +1,4 @@
-use crate::ast::{Expr, ExprKind, LitPat, Pattern, PatternKind};
+use crate::ast::{BinOp, Expr, ExprKind, LitPat, Pattern, PatternKind, UnaryOp};
 use crate::check::registry::TypeRegistry;
 use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::{apply_subst, unify};
@@ -240,10 +240,99 @@ impl<'a> Infer<'a> {
                 }
                 last_ty
             }
+            ExprKind::BinOp { op, lhs, rhs } => self.infer_binop(e, op, lhs, rhs),
+            ExprKind::UnaryOp { op, expr } => self.infer_unaryop(e, op, expr),
             _ => Ty::Var(self.fresh()),
         };
         self.record_expr_type(e.span, ty.clone());
         ty
+    }
+
+    fn infer_binop(&mut self, e: &Expr, op: &BinOp, lhs: &Expr, rhs: &Expr) -> Ty {
+        let lhs_ty = self.infer_expr(lhs);
+        let rhs_ty = self.infer_expr(rhs);
+        // Operands must agree, so unify the two sides up front for every
+        // operator. What differs per operator is which concrete type the
+        // result is and whether the agreed-on operand type is constrained.
+        match op {
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => {
+                self.unify_operands(&lhs_ty, &rhs_ty, e.span);
+                let resolved = apply_subst(&lhs_ty, &self.subst);
+                self.require_numeric(&resolved, e.span);
+                resolved
+            }
+            BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => {
+                self.unify_operands(&lhs_ty, &rhs_ty, e.span);
+                let resolved = apply_subst(&lhs_ty, &self.subst);
+                self.require_numeric(&resolved, e.span);
+                Ty::Prim(PrimTy::Bool)
+            }
+            BinOp::Eq | BinOp::Ne => {
+                self.unify_operands(&lhs_ty, &rhs_ty, e.span);
+                Ty::Prim(PrimTy::Bool)
+            }
+            BinOp::And | BinOp::Or | BinOp::Xor => {
+                self.expect_operand(&lhs_ty, &Ty::Prim(PrimTy::Bool), lhs.span);
+                self.expect_operand(&rhs_ty, &Ty::Prim(PrimTy::Bool), rhs.span);
+                Ty::Prim(PrimTy::Bool)
+            }
+            BinOp::Concat => {
+                self.expect_operand(&lhs_ty, &Ty::Prim(PrimTy::String), lhs.span);
+                self.expect_operand(&rhs_ty, &Ty::Prim(PrimTy::String), rhs.span);
+                Ty::Prim(PrimTy::String)
+            }
+        }
+    }
+
+    fn infer_unaryop(&mut self, e: &Expr, op: &UnaryOp, inner: &Expr) -> Ty {
+        let inner_ty = self.infer_expr(inner);
+        match op {
+            UnaryOp::Neg => {
+                let resolved = apply_subst(&inner_ty, &self.subst);
+                if self.require_numeric(&resolved, e.span) {
+                    resolved
+                } else {
+                    Ty::Var(self.fresh())
+                }
+            }
+            UnaryOp::Not => {
+                self.expect_operand(&inner_ty, &Ty::Prim(PrimTy::Bool), e.span);
+                Ty::Prim(PrimTy::Bool)
+            }
+        }
+    }
+
+    fn unify_operands(&mut self, lhs: &Ty, rhs: &Ty, span: Span) {
+        if let Err(ue) = unify(&mut self.subst, lhs, rhs) {
+            self.errors
+                .push(crate::check::unify_error_to_error(span, ue));
+        }
+    }
+
+    fn expect_operand(&mut self, actual: &Ty, expected: &Ty, span: Span) {
+        if let Err(ue) = unify(&mut self.subst, actual, expected) {
+            self.errors
+                .push(crate::check::unify_error_to_error(span, ue));
+        }
+    }
+
+    /// Arithmetic, ordering and negation accept only Int or Float. There is no
+    /// type-variable that captures "numeric", so we check the resolved type
+    /// directly instead of unifying. Returns whether the type was acceptable.
+    fn require_numeric(&mut self, ty: &Ty, span: Span) -> bool {
+        match ty {
+            Ty::Prim(PrimTy::Int) | Ty::Prim(PrimTy::Float) => true,
+            _ => {
+                self.errors.push(Error {
+                    span,
+                    kind: crate::error::ErrorKind::TypeMismatch {
+                        expected: "Int or Float".into(),
+                        found: format!("{ty:?}"),
+                    },
+                });
+                false
+            }
+        }
     }
 
     fn infer_construct(&mut self, e: &Expr, type_name: &str, fields: &[crate::ast::KwArg]) -> Ty {
