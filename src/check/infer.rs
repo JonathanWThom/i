@@ -358,7 +358,7 @@ impl<'a> Infer<'a> {
                     span,
                     kind: crate::error::ErrorKind::TypeMismatch {
                         expected: "Int or Float".into(),
-                        found: format!("{ty:?}"),
+                        found: format!("{ty}"),
                     },
                 });
                 false
@@ -496,7 +496,7 @@ impl<'a> Infer<'a> {
                 self.errors.push(Error {
                     span: receiver.span,
                     kind: crate::error::ErrorKind::CannotAccessMember {
-                        ty: format!("{:?}", resolved),
+                        ty: format!("{resolved}"),
                         member: field.to_string(),
                     },
                 });
