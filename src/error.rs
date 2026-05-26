@@ -70,6 +70,9 @@ pub enum ErrorKind {
         type_name: String,
         field: String,
     },
+    NonExhaustiveMatch {
+        missing: Vec<String>,
+    },
     CannotAccessMember {
         ty: String,
         member: String,

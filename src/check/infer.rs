@@ -203,6 +203,15 @@ impl<'a> Infer<'a> {
                             .push(crate::check::unify_error_to_error(arm.body.span, ue));
                     }
                 }
+                let scrutinee_resolved = apply_subst(&scrutinee_ty, &self.subst);
+                if let crate::check::exhaust::Coverage::Missing(missing) =
+                    crate::check::exhaust::check_arms(&scrutinee_resolved, arms, &self.registry)
+                {
+                    self.errors.push(Error {
+                        span: e.span,
+                        kind: crate::error::ErrorKind::NonExhaustiveMatch { missing },
+                    });
+                }
                 Ty::Var(result_v)
             }
             ExprKind::Block(items) => {

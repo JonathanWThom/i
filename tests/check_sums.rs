@@ -153,6 +153,50 @@ bad = m -> m match
 }
 
 #[test]
+fn non_exhaustive_match_errors() {
+    let src = "\
+type Shape
+    Circle
+        radius : Float
+    Rect
+        width : Float
+        height : Float
+
+f : Shape -> Float
+f = s -> s match
+    Circle r -> r
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let errs = check_file(&file, &res).unwrap_err();
+    assert!(errs.iter().any(|e| matches!(
+        &e.kind,
+        i_lang::error::ErrorKind::NonExhaustiveMatch { missing }
+            if missing.iter().any(|m| m == "Rect")
+    )));
+}
+
+#[test]
+fn exhaustive_match_with_wildcard_is_ok() {
+    let src = "\
+type Shape
+    Circle
+        radius : Float
+    Rect
+        width : Float
+        height : Float
+
+f : Shape -> Float
+f = s -> s match
+    Circle r -> r
+    _ -> 0.0
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    check_file(&file, &res).unwrap();
+}
+
+#[test]
 fn ctor_payload_type_mismatch_errors() {
     let src = "\
 type Maybe a

@@ -1,3 +1,4 @@
+pub mod exhaust;
 pub mod infer;
 pub mod registry;
 pub mod types;
