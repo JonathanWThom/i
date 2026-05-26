@@ -64,8 +64,17 @@
 - [x] Corpus + integration tests (Tasks 16-17)
 - [x] Resolver documentation (Task 18)
 
-## Phase 4: Implementation — Plan 4 (type checker, HM core) IN PROGRESS
+## Phase 4: Implementation — Plan 4 (type checker, HM core) DONE
 See [`2026-05-22-plan-4-type-checker.md`](2026-05-22-plan-4-type-checker.md). Scope: Hindley-Milner inference, records, sums, patterns, exhaustiveness, primitive operators, list literals. Defers traits, effects, totality, `?` operator to later plans.
+- [x] Scaffold + Ty/Scheme/Subst + unification (Tasks 1-3)
+- [x] Inference context, literals, variables, lambdas, applications (Tasks 4-9)
+- [x] Blocks, generalisation, annotations (Tasks 10-11)
+- [x] Type registry, newtypes, records, sums (Tasks 12-13)
+- [x] Construction, update, field access, methods, constructors (Tasks 14-16)
+- [x] Patterns and match with exhaustiveness (Tasks 17-21)
+- [x] Primitive operators and list literals (Tasks 22-23)
+- [x] Pretty-printing, corpus snapshots, end-to-end test (Tasks 24-26)
+- [x] Documentation (Task 27)
 
 ## Later v1 phases
 - [ ] Traits + operator desugaring — Plan 5 (TBD)

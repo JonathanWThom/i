@@ -18,6 +18,7 @@ doc.
 - [Standard library](stdlib.md) — every type and function in v1
 - [Limitations](limitations.md) — what v1 doesn't do
 - [Name resolution](resolution.md) — what every identifier refers to
+- [Type checking](checker.md) — Hindley-Milner inference and exhaustiveness
 - [Testing strategy](testing.md) — how the compiler is tested, layer by layer
 
 ## Specs and plans
