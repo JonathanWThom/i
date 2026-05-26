@@ -1,5 +1,5 @@
 use i_lang::check::check_file;
-use i_lang::check::types::Ty;
+use i_lang::check::types::{PrimTy, Ty};
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
@@ -152,4 +152,31 @@ firstUser = UserId(value = 1)
     let f = res.defs.iter().find(|d| d.name == "firstUser").unwrap();
     let user_id = res.defs.iter().find(|d| d.name == "UserId").unwrap();
     assert_eq!(typing.schemes[&f.id].ty, Ty::Con(user_id.id, vec![]));
+}
+
+#[test]
+fn annotation_flows_into_lambda_param_for_field_access() {
+    // The annotation `Point -> Float` must pin the lambda parameter `p` to
+    // Point before the body is checked; otherwise `p.x` accesses a member on
+    // an unresolved tyvar and fails. Exercises bidirectional param checking.
+    let src = "\
+type Point
+    x : Float
+    y : Float
+
+getX : Point -> Float
+getX = p -> p.x
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).expect("annotation should pin p : Point");
+    let g = res.defs.iter().find(|d| d.name == "getX").unwrap();
+    let point = res.defs.iter().find(|d| d.name == "Point").unwrap();
+    assert_eq!(
+        typing.schemes[&g.id].ty,
+        Ty::Fun(
+            vec![Ty::Con(point.id, vec![])],
+            Box::new(Ty::Prim(PrimTy::Float))
+        )
+    );
 }

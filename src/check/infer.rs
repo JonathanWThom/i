@@ -249,6 +249,33 @@ impl<'a> Infer<'a> {
         ty
     }
 
+    /// Checking-mode inference for a lambda whose parameter types are already
+    /// known (from a top-level annotation). Unifying each parameter with its
+    /// expected type *before* the body is inferred lets member access on a
+    /// parameter resolve to a concrete type. `expected` must match `params` in
+    /// length; the caller guarantees this.
+    pub fn infer_lambda_checked(
+        &mut self,
+        value: &Expr,
+        params: &[Pattern],
+        body: &Expr,
+        expected: &[Ty],
+    ) -> Ty {
+        let mut param_tys = Vec::with_capacity(params.len());
+        for (p, exp) in params.iter().zip(expected) {
+            let pr = self.infer_pattern(p);
+            if let Err(ue) = unify(&mut self.subst, &pr.ty, exp) {
+                self.errors
+                    .push(crate::check::unify_error_to_error(p.span, ue));
+            }
+            param_tys.push(pr.ty);
+        }
+        let result_ty = self.infer_expr(body);
+        let ty = Ty::Fun(param_tys, Box::new(result_ty));
+        self.record_expr_type(value.span, ty.clone());
+        ty
+    }
+
     fn infer_binop(&mut self, e: &Expr, op: &BinOp, lhs: &Expr, rhs: &Expr) -> Ty {
         let lhs_ty = self.infer_expr(lhs);
         let rhs_ty = self.infer_expr(rhs);

@@ -114,8 +114,24 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
         // Infer each binding's body and unify with its pre-declared tyvar.
         for (idx, &i) in scc.iter().enumerate() {
             let (_, value, _) = bindings[i];
-            let body_ty = infer.infer_expr(value);
             let v = tyvars[idx];
+            // If this binding's tyvar already resolves to a function type —
+            // via a user annotation, or via an earlier member of a recursive
+            // group that constrained it — push the expected parameter types
+            // into the lambda before checking its body. Otherwise member access
+            // on a parameter sees only an unresolved tyvar (the constraint would
+            // unify too late). Equivalent types either way; this just resolves
+            // them eagerly enough for member access.
+            let expected = apply_subst(&Ty::Var(v), &infer.subst);
+            let body_ty = match (&value.node, &expected) {
+                (ExprKind::Lambda { params, body }, Ty::Fun(param_tys, _))
+                    if params.len() == param_tys.len() =>
+                {
+                    let param_tys = param_tys.clone();
+                    infer.infer_lambda_checked(value, params, body, &param_tys)
+                }
+                _ => infer.infer_expr(value),
+            };
             if let Err(e) = unify(&mut infer.subst, &Ty::Var(v), &body_ty) {
                 infer.errors.push(unify_error_to_error(value.span, e));
             }

@@ -3012,7 +3012,7 @@ type Maybe a
 type Point
     x : Float
     y : Float
-    magnitude = -> (self.x * self.x + self.y * self.y) ^ 0.5
+    magnitude = (self.x * self.x + self.y * self.y) ^ 0.5
 
 origin : Point
 origin = Point(x = 0.0, y = 0.0)
@@ -3044,11 +3044,81 @@ Expected: PASS (everything should be in place from Tasks 1–25).
 
 If it fails — diagnose, fix the root cause (don't soften the test), and rerun. Common surprises: method's first `self` parameter not unified with the receiver, exhaustiveness check seeing only one of two variants, generalisation tripping over `self` types.
 
+**Deviation found during execution (root cause fixed):** the test did not
+pass on Tasks 1–25 machinery. Two real problems surfaced:
+
+1. The fixture wrote `magnitude = -> (...)`, but the spec
+   (`docs/syntax.md:255`) says *pure zero-argument values are not functions* —
+   the only zero-arg functions are effectful (`name!`). A pure method is a
+   plain value binding, so the form is `magnitude = (...)` with no arrow.
+   Corrected in the fixture above; not a softening (intent unchanged).
+
+2. After that, `p.magnitude` failed with `CannotAccessMember` on a type
+   variable. Root cause: a function *annotation* did not flow into the
+   lambda's parameters before the body was inferred. `magOrZero`'s annotation
+   `Maybe Point -> Float` only unified with the lambda type *after* the body
+   was done, so when `p.magnitude` was checked, `mp` (hence `p`) was still an
+   unresolved tyvar and eager member resolution failed. The checker had no
+   bidirectional/checking-mode path. Fixed below.
+
+- [ ] **Step 3: Write the focused failing test (bidirectional flow)**
+
+Add to `tests/check_records.rs` a minimal reproduction independent of `match`:
+
+```rust
+#[test]
+fn annotation_flows_into_lambda_param_for_field_access() {
+    let src = "\
+type Point
+    x : Float
+    y : Float
+
+getX : Point -> Float
+getX = p -> p.x
+";
+    let file = parse(&lex(src).unwrap()).unwrap();
+    let res = resolve_file(&file).unwrap();
+    let typing = check_file(&file, &res).expect("annotation should pin p : Point");
+    let g = res.defs.iter().find(|d| d.name == "getX").unwrap();
+    assert_eq!(
+        typing.schemes[&g.id].ty,
+        Ty::Fun(vec![Ty::Con(/* Point */ res.defs.iter().find(|d| d.name == "Point").unwrap().id, vec![])], Box::new(Ty::Prim(PrimTy::Float)))
+    );
+}
+```
+
+Run: `cargo test --test check_records annotation_flows`
+Expected: FAIL (`CannotAccessMember` on `p.x`).
+
+- [ ] **Step 4: Implement bidirectional param checking**
+
+In `src/check/mod.rs`, the SCC body-inference loop currently calls
+`infer.infer_expr(value)` then unifies the result with the binding's
+pre-declared tyvar. When the value is a lambda *and* the binding's tyvar
+already resolves (through the annotation) to a `Fun` of matching arity, push
+the expected parameter types into the lambda's patterns before inferring the
+body. Add an `Infer::infer_lambda_checked(value, params, body, &expected_params)`
+helper that mirrors the `Lambda` arm but unifies each pattern's type with the
+corresponding expected type up front (and still records the lambda's expr
+type for the side table). Fall back to plain `infer_expr` otherwise.
+
+This is checking-mode inference wherever a binding's tyvar is *already* a
+function type before its body runs: a top-level annotation is the main
+source, but a mutually-recursive sibling that constrained the tyvar also
+triggers it. The resulting types are equivalent either way — the only visible
+effect is that tied parameters resolve a step earlier (this renumbers the
+`mutual-rec.i` corpus snapshot from `t4 -> t5` to `t2 -> t5`; re-accept it).
+General bidirectional checking for nested positions is **deferred** — call it
+out in `docs/checker.md` (Task 27).
+
+Run: `cargo test --test check_records annotation_flows` then
+`cargo test --test check_end_to_end`. Both PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/check_end_to_end.rs
-git commit -m "Plan 4 Task 26: end-to-end small-program typing test"
+git add src/check/ tests/check_records.rs tests/check_end_to_end.rs
+git commit -m "Plan 4 Task 26: end-to-end typing + bidirectional param checking"
 ```
 
 ---
