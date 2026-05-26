@@ -1,0 +1,6 @@
+---
+source: tests/check_corpus.rs
+expression: "format!(\"{}\", typing)"
+input_file: tests/corpus/check/method-self.i
+---
+schemes:

@@ -1,0 +1,7 @@
+---
+source: tests/check_corpus.rs
+expression: "format!(\"{}\", typing)"
+input_file: tests/corpus/check/identity.i
+---
+schemes:
+  #0 : forall t1 . t1 -> t1

@@ -1,0 +1,8 @@
+---
+source: tests/check_corpus.rs
+expression: "format!(\"{}\", typing)"
+input_file: tests/corpus/check/mutual-rec.i
+---
+schemes:
+  #0 : t4 -> t5
+  #1 : t4 -> t5

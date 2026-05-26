@@ -91,6 +91,19 @@ pub struct Typing {
     pub pattern_types: HashMap<Span, Ty>,
 }
 
+impl std::fmt::Display for Typing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "schemes:")?;
+        // Sort by DefId so the snapshot is stable across HashMap iteration order.
+        let mut entries: Vec<_> = self.schemes.iter().collect();
+        entries.sort_by_key(|(id, _)| id.0);
+        for (id, scheme) in entries {
+            writeln!(f, "  #{} : {}", id.0, scheme)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

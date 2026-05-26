@@ -1,0 +1,9 @@
+---
+source: tests/check_corpus.rs
+expression: "format!(\"{}\", typing)"
+input_file: tests/corpus/check/sum-match.i
+---
+schemes:
+  #1 : forall t0 . #0(t0)
+  #2 : forall t0 . t0 -> #0(t0)
+  #3 : #0(Int) -> Int
