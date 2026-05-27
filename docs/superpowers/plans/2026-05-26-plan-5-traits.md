@@ -31,6 +31,18 @@ TDD per task: failing test first, confirm it fails, minimal implementation, conf
 
 Per CLAUDE.md, commit only after the user has seen the review and said go. Commit headline `Plan 5 Task N: <verb-led description>`; trailer `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
 
+## Per-task code review
+
+Every task with `.rs` changes grows a review step between green tests and the commit (as Plan 4 did from Task 20 on):
+
+1. After `make ci` passes, **do not commit yet**.
+2. Spawn a fresh general-purpose subagent. Brief it with the task's plan section (verbatim), the unstaged diff (`git diff` — just the diff, not whole files), and a pointer to `CLAUDE.md` plus `docs/checker.md` and the design spec.
+3. Ask for **2-3 findings or "clean"**, in the format `file:line — one-line problem`. Priorities: TDD/spec violations; undocumented plan deviation; dead code/over-engineering; missing WHY comments; small simplifications. No proposed fixes, no re-running tests, no edits — identification only.
+4. Report findings inline in the task summary (terse — 2-3 lines, or "review clean").
+5. Wait for the user's call on which findings to address. Apply approved fixes. Then commit.
+
+Documentation-only tasks (no `.rs` changes) skip this — here, **Task 13** only. See `CLAUDE.md` §"Code review before commit" for the canonical rule.
+
 ---
 
 ### Task 1: Built-in trait knowledge (`TraitId`)
@@ -192,7 +204,11 @@ impl TraitId {
 Run: `cargo test -p i-lang --lib check::traits`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/traits.rs src/check/mod.rs
@@ -272,7 +288,11 @@ Scheme {
 Run: `cargo test -p i-lang`
 Expected: PASS — the new test plus the entire existing suite (the field is additive, all schemes default to no constraints).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/types.rs src/check/mod.rs src/check/infer.rs
@@ -374,7 +394,11 @@ pub struct TypeRegistry {
 Run: `cargo test -p i-lang --lib check::registry`
 Expected: PASS (2 tests).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/registry.rs
@@ -453,7 +477,11 @@ pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
 Run: `cargo test -p i-lang --lib check::traits`
 Expected: PASS.
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/traits.rs
@@ -527,7 +555,11 @@ Append to the `ErrorKind` enum in `src/error.rs`, before the closing `}`:
 Run: `cargo test -p i-lang --lib error`
 Expected: PASS.
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/error.rs
@@ -695,7 +727,11 @@ Add a new pass at the end of `build_registry` (after the method second-pass loop
 Run: `cargo test --test check_traits && cargo test -p i-lang`
 Expected: PASS — the four new tests, and the existing suite (seeding builtins doesn't affect programs with no operators-on-unimpl'd-types yet, because operator dispatch isn't wired until Task 8).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/mod.rs tests/check_traits.rs
@@ -783,7 +819,11 @@ Update the three call sites to pass a span:
 Run: `cargo test -p i-lang`
 Expected: PASS — new test plus existing suite (ctor/var schemes have no constraints today, so the ambient set stays empty for them).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/infer.rs
@@ -903,7 +943,11 @@ Delete `require_numeric` (`:377-394`) — no longer referenced. `clippy -D warni
 Run: `cargo test -p i-lang`
 Expected: PASS for the two new tests. **Note:** `tests/check_literals.rs::mixed_int_float_addition_errors` still passes (unifying `Int` with `Float` fails in `unify_operands`). `heterogeneous_list_errors` unaffected. The Plan-4 test `mixed_int_float_addition_errors` expecting a `TypeMismatch` still gets one from the operand unify. If any literal test asserted the *old* "Int or Float" message text, update it to the unification mismatch — check `tests/check_literals.rs` and adjust assertions that match on the removed `require_numeric` message.
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/infer.rs tests/check_traits.rs
@@ -1045,7 +1089,11 @@ Add `Constraint` to the `types::*` glob already imported via `pub use types::*;`
 Run: `cargo test -p i-lang`
 Expected: PASS — all four new tests, plus the whole prior suite. The `bothEq` scheme now reads `forall a . Eq a => a, a -> Bool` internally (constraint attached). The corpus snapshots from Plan 4 are unaffected (those programs use no operators on type vars, so no constraints attach).
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/mod.rs tests/check_traits.rs
@@ -1188,7 +1236,11 @@ In `src/check/mod.rs`, the `MissingImpl`/`DuplicateImpl` `ty` strings (Tasks 6 a
 Run: `cargo test -p i-lang`
 Expected: PASS. Existing tests that assert on error *kinds* (not message strings) are unaffected; if any assert on the old `#<id>` message, update to the friendly form.
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add src/check/types.rs src/check/infer.rs src/check/mod.rs
@@ -1257,7 +1309,11 @@ schemes:
 
 and that the existing six now show binding names. Do not accept on the user's behalf.
 
-- [ ] **Step 5: Code review, then commit (after user accepts snapshots)**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above (the `.rs` change here is `tests/check_corpus.rs`): spawn a fresh subagent with this task section, the unstaged diff, and the doc pointers. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user accepts snapshots and the review)**
 
 ```bash
 git add tests/check_corpus.rs tests/corpus/check/ tests/snapshots/
@@ -1318,7 +1374,11 @@ None — exercises existing behavior end-to-end.
 Run: `cargo test -p i-lang && make ci`
 Expected: PASS, clean.
 
-- [ ] **Step 5: Code review, then commit**
+- [ ] **Step 5: Code review**
+
+Per **Per-task code review** above: after `make ci` is green, do *not* commit. Spawn a fresh general-purpose subagent with this task section (verbatim), the unstaged diff, and a pointer to `CLAUDE.md` + `docs/checker.md` + the design spec. Ask for 2-3 findings or "clean". Report inline, wait for the user's call, apply approved fixes.
+
+- [ ] **Step 6: Commit (after the user's go-ahead)**
 
 ```bash
 git add tests/check_end_to_end.rs
