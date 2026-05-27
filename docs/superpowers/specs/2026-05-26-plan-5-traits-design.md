@@ -22,9 +22,20 @@ interpreter will do the same small operator→method lookup later.
 
 ## New data model (`src/check/`)
 
+In Plan 5 the only way a constraint can arise is using an operator —
+constraint syntax in annotations (`Eq a => ...`) doesn't parse yet, and
+explicit `Trait.method` calls are deferred. Every operator maps to a
+fixed, known trait. There is no prelude declaring `Add`/`Eq`/… (Plan 9),
+so they have no `DefId`. The operator-traits are therefore **built into
+the checker** as a small enum, not modelled as resolver defs:
+
 ```rust
+// The built-in operator traits. These are intrinsic in Plan 5; Plan 9's
+// prelude replaces them with real `trait` declarations.
+enum TraitId { Add, Sub, Mul, Div, Pow, Neg, Eq, Ord, Concat }
+
 // A requirement: "this type must implement this trait."
-struct Constraint { trait_id: DefId, ty: Ty }
+struct Constraint { trait_: TraitId, ty: Ty }
 
 // Scheme grows a constraint list — this is what makes `Eq a => ...` real.
 struct Scheme { vars: Vec<TyVarId>, constraints: Vec<Constraint>, ty: Ty }
@@ -32,39 +43,47 @@ struct Scheme { vars: Vec<TyVarId>, constraints: Vec<Constraint>, ty: Ty }
 // Impl-table key. Primitives have no DefId, so the head covers both.
 enum TypeHead { Prim(PrimTy), Con(DefId) }
 
-struct TraitInfo { name: String, type_var: TyVarId, methods: Vec<MethodInfo> }
-struct ImplInfo  { trait_id: DefId, head: TypeHead, methods: Vec<MethodInfo> }
+struct ImplInfo { trait_: TraitId, head: TypeHead }
 ```
 
-- **Trait registry**: `HashMap<DefId, TraitInfo>`. Each method's scheme is
-  written in terms of the trait's single type var and carries the
-  self-constraint — e.g. `Eq.eq : forall a. Eq a => a, a -> Bool`.
-- **Impl table**: `HashMap<(DefId, TypeHead), ImplInfo>`. The map key *is*
-  the coherence rule: a duplicate insert is a `DuplicateImpl` error. One
-  impl per `(trait, type)` pair across the whole program (Haskell-style
-  global coherence, per the language spec § 7).
+- **Built-in trait method signatures** live in code, not a registry: each
+  `TraitId` knows its method shape — `Add`/`Sub`/`Mul`/`Div`/`Pow` are
+  `a, a -> a`; `Neg` is `a -> a`; `Eq`/`Ord` are `a, a -> Bool`; `Concat`
+  is `a, a -> a`. (`Eq` conceptually has `eq`/`ne` and `Ord` has
+  `lt`/`le`/`gt`/`ge`, but for *typing* every method of a trait shares one
+  shape, so the checker only needs the shape per `TraitId`.)
+- **Impl table**: `HashMap<(TraitId, TypeHead), ImplInfo>`. The map key
+  *is* the coherence rule: a duplicate insert is a `DuplicateImpl` error.
+  One impl per `(trait, type)` pair across the whole program
+  (Haskell-style global coherence, per the language spec § 7).
 - **Synthetic primitive impls**: at startup the checker seeds the impl
   table with the prelude impls on primitives — `(Add, Prim(Int))`,
-  `(Eq, Prim(Int))`, `(Ord, Prim(Float))`, `(Concat, Prim(String))`, and
-  the rest of the standard set. This is the same "built-in until Plan 9"
-  move the resolver already uses for primitive *types*
-  (`resolve_type_name`). When Plan 9 ships a real `prelude.i`, the source
-  impls replace this seeding; the leaf intrinsics (what `add` does to two
-  machine Ints) move behind the prelude's impl bodies.
+  `(Add, Prim(Float))`, `(Eq, Prim(Int))`, `(Ord, Prim(Float))`,
+  `(Concat, Prim(String))`, and the rest of the standard set. This is the
+  same "built-in until Plan 9" move the resolver already uses for
+  primitive *types* (`resolve_type_name`). When Plan 9 ships a real
+  `prelude.i`, the source impls replace this seeding; the leaf intrinsics
+  (what `add` does to two machine Ints) move behind the prelude's impl
+  bodies.
+- **User impls of built-in traits** are the headline feature: `impl Eq
+  Point` registers `(Eq, Con(point_def))`, which is exactly what lets
+  `pt == pt2` type-check. The `Eq` in `impl Eq Point` is parsed from the
+  `ImplDecl`'s `trait_name` string to a `TraitId`; an unrecognised name is
+  `UnknownTrait`.
 
 ## Data flow through inference
 
 1. **Collect.** `Infer` accumulates a `Vec<Constraint>` alongside its
    `Subst`, the way it already accumulates errors.
 2. **Operators.** `infer_binop` / `infer_unaryop` stop hardcoding
-   Int/Float. `+` looks up the `Add` trait, instantiates `Add.add`'s
-   scheme, and applies it to the operands — which unifies the operands and
-   emits an `Add` constraint on their type. The result type falls out of
-   the method signature (`Add` → same type, `Eq`/`Ord` → `Bool`,
-   `Concat` → same type).
+   Int/Float. `+` maps to `TraitId::Add`: unify the two operands together,
+   emit an `Add` constraint on the operand type, and return the result
+   type from the trait's shape (`Add` → operand type, `Eq`/`Ord` → `Bool`,
+   `Concat` → operand type).
 3. **Instantiate.** When a scheme that carries constraints is used, its
    constraints are instantiated with the same fresh vars and added to the
-   ambient set — so a caller of `eq` inherits the `Eq` obligation.
+   ambient set — so a caller of a constrained generic (e.g. one inferred
+   as `Eq a => ...`) inherits the `Eq` obligation at its own call site.
 4. **Solve** (per SCC, before generalising). For each constraint, apply
    the current substitution and inspect the head:
    - **Concrete** (`Prim` or `Con`) → look up the impl. Found ⇒
@@ -76,23 +95,26 @@ struct ImplInfo  { trait_id: DefId, head: TypeHead, methods: Vec<MethodInfo> }
 5. **Generalise.** Retained constraints attach to the scheme alongside the
    quantified vars.
 
-## Building traits & impls
+## Building the impl table
 
-A pre-inference pass (extending `build_registry`) walks every `TraitDecl`
-into a `TraitInfo` and every `ImplDecl` into an `ImplInfo`, then seeds the
-synthetic primitive impls. Checks performed here:
+A pre-inference pass (extending `build_registry`) walks every `ImplDecl`
+into an `ImplInfo`, then seeds the synthetic primitive impls. Checks
+performed here:
 
-- the named trait exists (`UnknownTrait`);
+- the `trait_name` is a known built-in trait (`UnknownTrait` otherwise);
+- the target type's head resolves (via `lower_type`) to a `TypeHead`;
 - no duplicate impl for a `(trait, type)` pair (`DuplicateImpl`);
 - the impl supplies *exactly* the trait's methods — none missing, none
-  extra (`MissingMethod` / `UnknownMethod`).
+  extra (`MissingMethod` / `UnknownMethod`), checked against the built-in
+  method-name set for that `TraitId`.
 
 Per the language spec, **no superclasses** (a trait can't require another)
 and **no default method bodies** (every impl provides every method).
 
-Explicit trait-qualified calls — `Eq.eq a, b`, which the spec uses inside
-impl bodies — resolve `Eq.eq` to the trait method and instantiate its
-constrained scheme like any other reference.
+Explicit trait-qualified calls (`Eq.eq a, b`) and **user-declared `trait`
+blocks** are **deferred** — see below. Plan 5 reaches trait methods only
+through operators, which is sufficient because every operator trait is
+built in and every method in those traits has an operator.
 
 ## Friendly type names
 
@@ -108,7 +130,7 @@ re-accepted with friendly names (the user's interactive checkpoint).
 | --- | --- |
 | `MissingImpl { trait_name, ty }` | A required `(trait, type)` has no impl. |
 | `DuplicateImpl { trait_name, ty }` | Two impls for the same `(trait, type)` — coherence violation. |
-| `UnknownTrait { name }` | An `impl` or constraint names something that isn't a trait. |
+| `UnknownTrait { name }` | An `impl` names something that isn't a known built-in trait. |
 | `MissingMethod` / `UnknownMethod` | An impl omits a trait method, or defines one the trait didn't declare. |
 | `AmbiguousConstraint { trait_name }` | A constraint pins to neither a concrete type nor a generalisable var. |
 
@@ -121,7 +143,6 @@ Per-task TDD throughout. Integration tests in `tests/`:
 - missing-impl rejection;
 - duplicate-impl rejection (coherence);
 - impl method-set mismatch (missing / extra method);
-- explicit `Eq.eq` trait-method calls;
 - ambiguous-constraint rejection.
 
 New corpus fixtures under `tests/corpus/check/` for trait, impl, and
@@ -132,6 +153,20 @@ names deferred" notes) and `PROGRESS.md`.
 
 ## Explicitly deferred
 
+- **User-declared `trait` blocks and explicit trait-qualified calls**
+  (`trait Foo a`, `Eq.eq a, b`, `Show.show x`) — these land together,
+  naturally with **Plan 9 (stdlib)**. They share one prerequisite: a way
+  to *name and invoke* a user-defined trait. In Plan 5 there is none —
+  constraint syntax in annotations doesn't parse, explicit calls are
+  deferred, and operators only ever reach the built-in traits — so a
+  user-declared trait would be inert. Plan 9 is the first code that must
+  name a trait method with no operator (`Show.show` has none) and write
+  real prelude impl bodies. Explicit calls are also primarily a *resolver*
+  feature: the resolver currently rejects `Trait.method` (it tries `Eq` as
+  a module, then as a constructor, then errors `Unresolved`). Nothing in
+  Plans 6–8 needs either; both can be pulled forward as a small standalone
+  task if wanted sooner. (`TraitDecl` still parses and resolves today; the
+  Plan 5 checker simply ignores it.)
 - **Parameterised / conditional impls** (`impl Eq (List a)` needing
   `Eq a`) — Plan 5 matches only on the type *head*; conditional impls and
   their constraint propagation come later.
