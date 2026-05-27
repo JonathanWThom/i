@@ -933,6 +933,7 @@ mod tests {
             ctor_id,
             Scheme {
                 vars: vec![a],
+                constraints: Vec::new(),
                 ty: Ty::Con(parent_id, vec![Ty::Var(a)]),
             },
         );
@@ -973,6 +974,7 @@ mod tests {
             ctor_id,
             Scheme {
                 vars: vec![a],
+                constraints: Vec::new(),
                 ty: Ty::Fun(
                     vec![Ty::Var(a)],
                     Box::new(Ty::Con(parent_id, vec![Ty::Var(a)])),

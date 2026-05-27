@@ -1,3 +1,4 @@
+use crate::check::traits::TraitId;
 use crate::resolve::DefId;
 use crate::span::Span;
 use std::collections::HashMap;
@@ -22,9 +23,17 @@ pub enum Ty {
     Fun(Vec<Ty>, Box<Ty>),
 }
 
+/// "`ty` must implement `trait_`." The sole obligation kind in Plan 5.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Constraint {
+    pub trait_: TraitId,
+    pub ty: Ty,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scheme {
     pub vars: Vec<TyVarId>,
+    pub constraints: Vec<Constraint>,
     pub ty: Ty,
 }
 
@@ -131,9 +140,24 @@ mod tests {
     }
 
     #[test]
+    fn scheme_carries_constraints() {
+        let s = Scheme {
+            vars: vec![TyVarId(0)],
+            constraints: vec![Constraint {
+                trait_: TraitId::Eq,
+                ty: Ty::Var(TyVarId(0)),
+            }],
+            ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Bool))),
+        };
+        assert_eq!(s.constraints.len(), 1);
+        assert_eq!(s.constraints[0].trait_, TraitId::Eq);
+    }
+
+    #[test]
     fn display_scheme_includes_forall_when_quantified() {
         let scheme = Scheme {
             vars: vec![TyVarId(0)],
+            constraints: Vec::new(),
             ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Var(TyVarId(0)))),
         };
         let s = format!("{scheme}");

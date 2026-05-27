@@ -101,6 +101,7 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
                 def_id,
                 Scheme {
                     vars: Vec::new(),
+                    constraints: Vec::new(),
                     ty: Ty::Var(v),
                 },
             );
@@ -147,6 +148,7 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
                 def_id,
                 Scheme {
                     vars: Vec::new(),
+                    constraints: Vec::new(),
                     ty: resolved,
                 },
             );
@@ -496,6 +498,7 @@ fn build_registry(file: &File, infer: &mut Infer) {
                     variant.ctor_def_id,
                     Scheme {
                         vars: param_tyvars.clone(),
+                        constraints: Vec::new(),
                         ty: scheme_ty,
                     },
                 );
@@ -580,6 +583,7 @@ fn build_registry(file: &File, infer: &mut Infer) {
             }
             let scheme = Scheme {
                 vars: quantified,
+                constraints: Vec::new(),
                 ty: fun_ty,
             };
             if let Some(info) = infer.registry.types.get_mut(&parent_def_id) {
