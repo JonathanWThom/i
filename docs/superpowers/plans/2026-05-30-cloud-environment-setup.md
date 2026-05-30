@@ -335,6 +335,20 @@ three jobs are green and that the logs show mise installing rust `1.95.0` with
 `rustfmt`/`clippy`. Hand this check to the user (or run `gh run watch` if a run
 is in flight).
 
+> **Amendment (2026-05-30): `mise-action` caching drops the components.**
+> Task 3's premise — "mise honors `components`, so they're installed
+> regardless of the host's minimal profile" — holds only on a *fresh*
+> `mise install`. mise installs rust *via rustup* into `~/.rustup`, but
+> `jdx/mise-action`'s cache covers only `~/.local/share/mise`. On a cache
+> **hit**, `mise install` no-ops, `~/.rustup` is empty, and the first
+> `cargo fmt`/`cargo clippy` makes rustup auto-install the **minimal**
+> profile (no rustfmt/clippy) → `'cargo-fmt' is not installed`. So the
+> first CI run (cache miss) passed and every later run (cache hit) failed.
+> Fix: set `cache: false` on each `jdx/mise-action@v2` step, forcing the
+> full `mise install` (which pulls the declared components) every run. The
+> build cache (`Swatinem/rust-cache`) is unaffected. `mise.toml` stays the
+> single source of truth.
+
 ---
 
 ### Task 5: Check the cloud environment config into the repo

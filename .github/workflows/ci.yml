@@ -14,7 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # cache: false — mise installs rust via rustup into ~/.rustup, which the
+      # mise cache doesn't cover. On a cache hit `mise install` no-ops and the
+      # rustfmt/clippy components are never added, so rustup auto-installs the
+      # minimal profile and `cargo fmt`/`clippy` fail. A fresh install each run
+      # reliably pulls the components declared in mise.toml.
       - uses: jdx/mise-action@v2
+        with:
+          cache: false
       - run: make fmt-check
 
   clippy:
@@ -23,6 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
+        with:
+          cache: false
       - uses: Swatinem/rust-cache@v2
       - run: make lint
 
@@ -32,5 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
+        with:
+          cache: false
       - uses: Swatinem/rust-cache@v2
       - run: make test
