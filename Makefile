@@ -1,6 +1,7 @@
-.PHONY: help fmt fmt-check lint test ci dev clean rev
+.PHONY: help setup fmt fmt-check lint test ci dev clean rev
 
 help:
+	@echo "make setup      — one-time: install git hooks + fetch deps"
 	@echo "make fmt        — apply rustfmt"
 	@echo "make fmt-check  — verify rustfmt is clean (CI-friendly)"
 	@echo "make lint       — clippy with warnings as errors"
@@ -9,6 +10,10 @@ help:
 	@echo "make dev        — alias for test"
 	@echo "make rev        — cargo insta review (interactive snapshot review)"
 	@echo "make clean      — cargo clean"
+
+setup:
+	npm install
+	cargo fetch
 
 fmt:
 	cargo fmt --all
