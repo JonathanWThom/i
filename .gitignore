@@ -13,3 +13,7 @@ node_modules/
 .idea/
 *.swp
 *.swo
+
+# Claude Code (machine-local; a shared .claude/settings.json stays trackable)
+.claude/settings.local.json
+.claude/worktrees/
