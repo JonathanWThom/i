@@ -114,6 +114,10 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
             }
         }
 
+        // Snapshot the ambient-constraint length so we can split off only the
+        // constraints emitted while inferring *this* SCC's bodies.
+        let constraints_start = infer.constraints.len();
+
         // Infer each binding's body and unify with its pre-declared tyvar.
         for (idx, &i) in scc.iter().enumerate() {
             let (_, value, _) = bindings[i];
@@ -192,6 +196,65 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
                 .collect();
             if let Some(scheme) = infer.schemes.get_mut(&def_id) {
                 scheme.vars = mine;
+            }
+        }
+
+        // Discharge ambient constraints emitted in this SCC. Concrete heads
+        // check the impl table now; constraints on a generalised var attach
+        // to that var's scheme; anything else (concrete-but-unresolved into a
+        // tyvar that doesn't escape) is ambiguous.
+        let mine_by_scheme: Vec<(DefId, Vec<TyVarId>)> = scc
+            .iter()
+            .map(|&i| {
+                let id = bindings[i].0;
+                (id, infer.schemes[&id].vars.clone())
+            })
+            .collect();
+
+        let pending: Vec<(Constraint, Span)> = infer.constraints.split_off(constraints_start);
+        for (c, span) in pending {
+            let resolved = apply_subst(&c.ty, &infer.subst);
+            match head_of(&resolved) {
+                Some(head) => {
+                    if !infer.registry.impls.contains_key(&(c.trait_, head)) {
+                        infer.errors.push(Error {
+                            span,
+                            kind: ErrorKind::MissingImpl {
+                                trait_name: c.trait_.name().to_string(),
+                                ty: format!("{resolved}"),
+                            },
+                        });
+                    }
+                }
+                None => {
+                    let var = if let Ty::Var(v) = resolved {
+                        Some(v)
+                    } else {
+                        None
+                    };
+                    let mut attached = false;
+                    if let Some(v) = var {
+                        for (id, mine) in &mine_by_scheme {
+                            if mine.contains(&v) {
+                                if let Some(s) = infer.schemes.get_mut(id) {
+                                    s.constraints.push(Constraint {
+                                        trait_: c.trait_,
+                                        ty: Ty::Var(v),
+                                    });
+                                }
+                                attached = true;
+                            }
+                        }
+                    }
+                    if !attached {
+                        infer.errors.push(Error {
+                            span,
+                            kind: ErrorKind::AmbiguousConstraint {
+                                trait_name: c.trait_.name().to_string(),
+                            },
+                        });
+                    }
+                }
             }
         }
     }

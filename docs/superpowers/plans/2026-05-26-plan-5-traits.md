@@ -1055,7 +1055,10 @@ After the generalisation block (after `:192`, still inside `for scc in &sccs`), 
                     }
                 }
                 None => {
-                    // A type variable. Attach to whichever SCC scheme generalises it.
+                    // A type variable. Attach to every SCC scheme that
+                    // generalises it — in a mutually-recursive group, the same
+                    // var can be in multiple `mine` sets, and each scheme's
+                    // `forall` needs the obligation at its own use sites.
                     let var = match resolved {
                         Ty::Var(v) => Some(v),
                         _ => None,
