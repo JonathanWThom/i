@@ -15,6 +15,74 @@ pub enum PrimTy {
     Unit,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Effect {
+    Io,
+    State,
+    Env,
+}
+
+/// A set of concrete effect labels — v1's whole alphabet fits in three bits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct EffectSet(u8);
+
+impl EffectSet {
+    pub fn empty() -> Self {
+        EffectSet(0)
+    }
+    pub fn single(e: Effect) -> Self {
+        EffectSet(1 << e as u8)
+    }
+    pub fn contains(self, e: Effect) -> bool {
+        self.0 & (1 << e as u8) != 0
+    }
+    pub fn union(self, other: EffectSet) -> EffectSet {
+        EffectSet(self.0 | other.0)
+    }
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+    /// Labels present, in fixed order, for stable rendering.
+    pub fn iter(self) -> impl Iterator<Item = Effect> {
+        [Effect::Io, Effect::State, Effect::Env]
+            .into_iter()
+            .filter(move |&e| self.contains(e))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EffectVarId(pub u32);
+
+/// An open effect row: known `labels` plus an optional polymorphic `tail`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EffectRow {
+    pub labels: EffectSet,
+    pub tail: Option<EffectVarId>,
+}
+
+impl EffectRow {
+    pub fn pure() -> Self {
+        EffectRow {
+            labels: EffectSet::empty(),
+            tail: None,
+        }
+    }
+    pub fn concrete(labels: EffectSet) -> Self {
+        EffectRow { labels, tail: None }
+    }
+    pub fn open(labels: EffectSet, tail: EffectVarId) -> Self {
+        EffectRow {
+            labels,
+            tail: Some(tail),
+        }
+    }
+    /// Provably pure: no labels and no unknown tail. Drives the strict `!`
+    /// rule — a variable tail is NOT provably pure.
+    pub fn is_concrete_empty(&self) -> bool {
+        self.labels.is_empty() && self.tail.is_none()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ty {
     Var(TyVarId),
@@ -177,6 +245,28 @@ pub fn render_typing(t: &Typing, res: &Resolution) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn effect_set_union_and_membership() {
+        let io = EffectSet::single(Effect::Io);
+        let state = EffectSet::single(Effect::State);
+        assert!(io.contains(Effect::Io));
+        assert!(!io.contains(Effect::State));
+        let both = io.union(state);
+        assert!(both.contains(Effect::Io) && both.contains(Effect::State));
+        assert!(EffectSet::empty().is_empty());
+        assert!(!io.is_empty());
+    }
+
+    #[test]
+    fn effect_row_pure_is_concrete_empty() {
+        let pure = EffectRow::pure();
+        assert!(pure.is_concrete_empty());
+        let io = EffectRow::concrete(EffectSet::single(Effect::Io));
+        assert!(!io.is_concrete_empty());
+        let open = EffectRow::open(EffectSet::empty(), EffectVarId(0));
+        assert!(!open.is_concrete_empty()); // a tail var is not provably pure
+    }
 
     #[test]
     fn display_primitive() {
