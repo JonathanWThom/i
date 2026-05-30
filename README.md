@@ -44,10 +44,10 @@ make help        # full list
 ```
 
 A pre-commit hook (managed by [husky](https://typicode.github.io/husky/))
-runs `make ci` before every commit. To wire it up after cloning:
+runs `make ci` before every commit. To set up after cloning:
 
 ```sh
-npm install      # one-time; installs husky and runs `prepare`
+make setup       # one-time; installs the git hook (npm) and fetches deps
 ```
 
 The Node dependency is *only* for the pre-commit hook — the compiler itself
