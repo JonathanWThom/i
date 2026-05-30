@@ -1,8 +1,8 @@
 ---
 source: tests/check_corpus.rs
 expression: "i_lang::check::types::render_typing(&typing, &res)"
-input_file: tests/corpus/check/mutual-rec.i
+input_file: tests/corpus/check/operator-primitive.i
 ---
 schemes:
-  ping : t2 -> t5
-  pong : t2 -> t5
+  addInts : Int
+  cmp : Bool

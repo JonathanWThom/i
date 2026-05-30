@@ -1,8 +1,8 @@
 ---
 source: tests/check_corpus.rs
-expression: "format!(\"{}\", typing)"
+expression: "i_lang::check::types::render_typing(&typing, &res)"
 input_file: tests/corpus/check/record-build-update.i
 ---
 schemes:
-  #1 : #0
-  #2 : #0
+  origin : Point
+  shifted : Point

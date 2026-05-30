@@ -14,7 +14,7 @@ fn snapshot_check_corpus() {
             let file = parse(&toks).expect("parse");
             let res = resolve_file(&file).expect("resolve");
             let typing = check_file(&file, &res).expect("check");
-            insta::assert_snapshot!(format!("{}", typing));
+            insta::assert_snapshot!(i_lang::check::types::render_typing(&typing, &res));
         }
     );
 }

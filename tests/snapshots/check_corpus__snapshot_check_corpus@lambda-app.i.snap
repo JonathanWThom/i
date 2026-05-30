@@ -1,8 +1,8 @@
 ---
 source: tests/check_corpus.rs
-expression: "format!(\"{}\", typing)"
+expression: "i_lang::check::types::render_typing(&typing, &res)"
 input_file: tests/corpus/check/lambda-app.i
 ---
 schemes:
-  #0 : forall t1 . t1 -> t1
-  #1 : Int
+  id : forall t1 . t1 -> t1
+  n : Int

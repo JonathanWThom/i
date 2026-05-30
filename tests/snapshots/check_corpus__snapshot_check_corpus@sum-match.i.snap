@@ -1,9 +1,9 @@
 ---
 source: tests/check_corpus.rs
-expression: "format!(\"{}\", typing)"
+expression: "i_lang::check::types::render_typing(&typing, &res)"
 input_file: tests/corpus/check/sum-match.i
 ---
 schemes:
-  #1 : forall t0 . #0(t0)
-  #2 : forall t0 . t0 -> #0(t0)
-  #3 : #0(Int) -> Int
+  None : forall t0 . Maybe t0
+  Some : forall t0 . t0 -> Maybe t0
+  unwrap : Maybe Int -> Int

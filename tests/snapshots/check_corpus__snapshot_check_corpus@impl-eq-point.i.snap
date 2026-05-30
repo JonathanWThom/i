@@ -1,0 +1,9 @@
+---
+source: tests/check_corpus.rs
+expression: "i_lang::check::types::render_typing(&typing, &res)"
+input_file: tests/corpus/check/impl-eq-point.i
+---
+schemes:
+  samePoint : forall t2 . Eq t2 => t2, t2 -> Bool
+  p : Point
+  pointsEq : Bool
