@@ -103,7 +103,10 @@ Document the change in the commit that touches both.
 **Comments are rare.** Only when the WHY isn't obvious from the code:
 hidden constraints, workarounds, surprising invariants. Don't restate
 what the code does. Don't write multi-paragraph docstrings on internal
-functions.
+functions. Actively prune superfluous comments as you write — a comment
+that a reader could delete without losing information is noise, and
+should not survive into the commit. Keep only the ones that earn their
+place; when in doubt, cut it.
 
 **Span on every token and AST node.** Compile errors are useful only
 when they can point at source. Don't drop spans for ergonomics.
