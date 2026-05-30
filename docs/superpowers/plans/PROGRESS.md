@@ -76,8 +76,16 @@ See [`2026-05-22-plan-4-type-checker.md`](2026-05-22-plan-4-type-checker.md). Sc
 - [x] Pretty-printing, corpus snapshots, end-to-end test (Tasks 24-26)
 - [x] Documentation (Task 27)
 
+## Phase 5: Implementation — Plan 5 (traits + operator dispatch) DONE
+See [`2026-05-26-plan-5-traits.md`](2026-05-26-plan-5-traits.md). Scope: built-in operator traits, an impl table with coherence, ambient constraints, per-SCC constraint solving, and friendly type-name rendering. Type-checking only — no runtime dispatch (Plan 8), no user-declared `trait` blocks or explicit `Trait.method` calls (Plan 9).
+- [x] Built-in `TraitId`, `Constraint`/`Scheme`, `TypeHead`/impl table, synthetic primitive impls (Tasks 1-4)
+- [x] Error variants, impl-table build with coherence (Tasks 5-6)
+- [x] Ambient constraints, constrained instantiation, operator dispatch, per-SCC solving (Tasks 7-9)
+- [x] Friendly type names, corpus fixtures, end-to-end test (Tasks 10-12)
+- [x] Documentation (Task 13)
+
 ## Later v1 phases
-- [ ] Traits + operator desugaring — Plan 5 (TBD)
+- [x] Traits + operator desugaring — Plan 5
 - [ ] Effects (IO/State/Env, HOF effect-polymorphism, `?`) — Plan 6 (TBD)
 - [ ] Totality / termination checking — Plan 7 (TBD)
 - [ ] Interpreter — Plan 8 (TBD)

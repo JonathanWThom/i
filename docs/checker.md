@@ -177,24 +177,72 @@ variants; full totality is Plan 7.
 
 ## Operators and lists
 
-Primitive operators are typed directly, *not* via traits (that's
-Plan 5). Arithmetic and ordering unify their operands and require the
-result to be `Int` or `Float`; equality returns `Bool`; logical
-operators expect `Bool`; `++` expects `String`. There is no "numeric"
-type variable, so the Int/Float constraint is a direct check on the
-resolved type. A list literal `[a, b, c]` types as `List elem`, unifying
-every element against one fresh element variable; `List` is an ordinary
-library type, so an out-of-scope `List` is an `UnknownType` error.
+Operators dispatch through traits. Each arithmetic, ordering, equality,
+and concat operator maps to a built-in `TraitId` (`+` → `Add`, `<` →
+`Ord`, `==` → `Eq`, `++` → `Concat`, unary `-` → `Neg`). `infer_binop`
+unifies the two operands, emits a `Constraint` on the agreed operand
+type, and returns the trait's result shape: `Bool` for `Eq`/`Ord`,
+otherwise the operand type. `and`/`or`/`xor`/`not` are not trait
+operators — they stay direct `Bool` operations. A list literal
+`[a, b, c]` types as `List elem`, unifying every element against one
+fresh element variable; `List` is an ordinary library type, so an
+out-of-scope `List` is an `UnknownType` error.
+
+---
+
+## Traits
+
+Plan 5 adds typeclass-style traits as a pure type-checking concern (no
+runtime dispatch — that's Plan 8).
+
+**Built-in traits.** There's no prelude yet (Plan 9), and operators are
+the only thing that names a trait, so the trait universe is a closed
+`TraitId` enum (`src/check/traits.rs`): `Add`, `Sub`, `Mul`, `Div`,
+`Pow`, `Neg`, `Eq`, `Ord`, `Concat`. Each knows its display name, its
+required method set, and whether its result is `Bool`.
+
+**Impl table.** The registry holds `impls: HashMap<(TraitId, TypeHead),
+ImplInfo>`. A `TypeHead` is either `Prim(PrimTy)` or `Con(DefId)` — the
+matchable head of a type, unifying primitives and nominal types under
+one key. `head_of` extracts it (a type variable or function type has no
+head, so it can't carry an impl).
+
+**Synthetic primitive impls.** `seed_builtin_impls` populates the table
+with what `prelude.i` will eventually supply in source: `Eq`/`Ord` on
+every primitive, the numeric traits on `Int` and `Float`, and `Concat`
+on `String`. It runs last during registry build, so user impls take
+precedence on collision.
+
+**User impls.** An `impl Eq Point` registers `(Eq, Con(Point))` after
+coherence checks: unknown trait name → `UnknownTrait`; a `(trait, head)`
+already present → `DuplicateImpl` (Haskell-style global coherence, one
+impl per pair); missing or extra methods → `MissingMethod` /
+`UnknownMethod` (the exact method set is enforced, both checks run so
+all problems surface at once). Method *bodies* aren't checked against
+trait signatures in Plan 5.
+
+**Constraints and the solver.** Inferring a body accumulates obligations
+in `Infer.constraints: Vec<(Constraint, Span)>` — operator dispatch
+pushes them, and instantiating a constrained scheme carries them in
+(rewritten through the fresh-var substitution). After each SCC
+generalises, the solver splits off that SCC's constraints and discharges
+each: a concrete head checks the impl table now (`MissingImpl` if
+absent); a constraint on a generalised var attaches to that var's scheme
+(so `bothEq` becomes `forall a . Eq a => a, a -> Bool`); anything else
+is `AmbiguousConstraint`.
 
 ---
 
 ## Pretty-printing
 
-`Display for Ty`/`Scheme`/`Typing` (`src/check/types.rs`) renders types
-in surface-ish syntax for error messages and corpus snapshots:
-`Int, Int -> Bool`, `forall t0 . t0 -> t0`. Constructors print as
-`#<DefId>` because the type carries no name; a `Resolution`-aware
-printer that prints friendly names is deferred to Plan 5.
+`ty_to_string`/`scheme_to_string`/`render_typing` (`src/check/types.rs`)
+render types with friendly names, looking up constructor `DefId`s in the
+`Resolution` so a type prints as `Maybe Int` rather than `#1(Int)`.
+`scheme_to_string` also renders the constraint context, e.g.
+`forall t0 . Eq t0 => t0 -> Bool`. These take `&Resolution` and are the
+authoritative renderers for user-facing output (error messages, corpus
+snapshots). The older `Display for Ty`/`Scheme` impls remain for cases
+without a `Resolution` to hand (they still print `#<DefId>`).
 
 ---
 
@@ -214,21 +262,30 @@ the first failure.
 | `NonExhaustiveMatch { missing }` | A `match` on a sum type omits variants and has no wildcard. |
 | `CannotAccessMember { ty, member }` | `.member` on something that isn't a record/type with that member. |
 | `EffectsNotYetImplemented` / `TuplesNotYetImplemented` | Annotation uses a feature deferred to a later plan. |
+| `MissingImpl { trait_name, ty }` | An operator needs a trait impl the type doesn't have (e.g. `Point == Point` with no `Eq Point`). |
+| `DuplicateImpl { trait_name, ty }` | Two impls of the same trait for the same type (coherence). |
+| `UnknownTrait { name }` | An `impl` names a trait that doesn't exist. |
+| `MissingMethod { trait_name, method }` | An `impl` omits a method the trait requires. |
+| `UnknownMethod { trait_name, method }` | An `impl` defines a method the trait doesn't declare. |
+| `AmbiguousConstraint { trait_name }` | A trait obligation falls on a var that never resolves and never generalises. |
 
 ---
 
 ## What's deferred
 
-- **Traits and operator dispatch** — Plan 5. Operators are typed with
-  hardcoded Int/Float/Bool/String rules today; Plan 5 replaces that with
-  real `impl` resolution and rips out the placeholder.
+- **User-declared `trait` blocks and explicit `Trait.method` calls** —
+  Plan 9. Today only the built-in operator traits exist; `trait` blocks
+  parse and resolve but aren't checked, and `Eq.eq` doesn't resolve.
+- **Parameterised / conditional impls** — `impl Eq (List a)` and the
+  like. Plan 5 only matches on a type's head, so impls can't be
+  conditioned on argument types.
+- **Runtime trait dispatch** — Plan 8. Plan 5 type-checks impls but does
+  no dictionary passing; there's no interpreter yet.
 - **Effects** — Plan 6. Effect rows in annotations currently raise
   `EffectsNotYetImplemented`; `!` and `?` aren't typed yet.
 - **Totality / exhaustiveness beyond sums** — Plan 7. Today only missing
   sum variants are flagged; primitive and nested-pattern coverage is
   not.
-- **Friendly type names in output** — Plan 5. `Display` prints
-  `#<DefId>`; a `Resolution`-aware printer would show `Maybe Int`.
 - **General bidirectional checking** — only the top-level-annotation /
   recursive-sibling case flows expected types in; nested expected-type
   positions still rely on synthesis.

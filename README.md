@@ -26,9 +26,9 @@ priorities are:
 
 ## Status
 
-Docs are complete; lexer, parser, name resolution, and the HM core of the
-type checker are complete and tested. Traits, effects, and totality are
-next. For the live state — phases, current
+Docs are complete; lexer, parser, name resolution, and the type checker —
+HM core plus traits and operator dispatch — are complete and tested.
+Effects and totality are next. For the live state — phases, current
 plan, task-level checkboxes — see
 [`docs/superpowers/plans/PROGRESS.md`](docs/superpowers/plans/PROGRESS.md).
 
