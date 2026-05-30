@@ -91,8 +91,8 @@ impl TraitId {
 }
 
 /// Synthesises the impls that a future `prelude.i` (Plan 9) will provide in
-/// source: Eq/Ord on every primitive, numeric traits on Int and Float,
-/// Concat on String.
+/// source: Eq/Ord on every primitive, Add/Sub/Mul/Div/Neg on Int and Float,
+/// Pow on Float only, Concat on String.
 pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
     let eq_ord: &[PrimTy] = &[
         PrimTy::Int,
@@ -117,12 +117,14 @@ pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
             TraitId::Sub,
             TraitId::Mul,
             TraitId::Div,
-            TraitId::Pow,
             TraitId::Neg,
         ] {
             add(t, p, reg);
         }
     }
+    // Pow is Float-only: negative integer exponents wouldn't return an Int,
+    // so Int ships no Pow impl (stdlib.md § Pow).
+    add(TraitId::Pow, PrimTy::Float, reg);
     add(TraitId::Concat, PrimTy::String, reg);
 }
 
@@ -190,6 +192,16 @@ mod tests {
         assert!(
             !reg.impls
                 .contains_key(&(TraitId::Add, TypeHead::Prim(PrimTy::String)))
+        );
+        // Pow ships on Float but not Int (stdlib.md § Pow: negative integer
+        // exponents wouldn't return an Int).
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Pow, TypeHead::Prim(PrimTy::Float)))
+        );
+        assert!(
+            !reg.impls
+                .contains_key(&(TraitId::Pow, TypeHead::Prim(PrimTy::Int)))
         );
     }
 }

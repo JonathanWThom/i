@@ -59,7 +59,9 @@ struct ImplInfo { trait_: TraitId, head: TypeHead }
 - **Synthetic primitive impls**: at startup the checker seeds the impl
   table with the prelude impls on primitives — `(Add, Prim(Int))`,
   `(Add, Prim(Float))`, `(Eq, Prim(Int))`, `(Ord, Prim(Float))`,
-  `(Concat, Prim(String))`, and the rest of the standard set. This is the
+  `(Concat, Prim(String))`, and the rest of the standard set — except
+  `Pow`, which ships on Float only (negative integer exponents wouldn't
+  return an Int; see stdlib.md § Pow). This is the
   same "built-in until Plan 9" move the resolver already uses for
   primitive *types* (`resolve_type_name`). When Plan 9 ships a real
   `prelude.i`, the source impls replace this seeding; the leaf intrinsics

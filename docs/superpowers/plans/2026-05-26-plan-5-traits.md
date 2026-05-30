@@ -448,7 +448,9 @@ use crate::check::types::PrimTy;
 
 /// Seed the impl table with the prelude impls on primitive types. Built-in
 /// until Plan 9's `prelude.i` supplies them in source. `Eq`/`Ord` on every
-/// primitive; numeric traits on Int and Float; `Concat` on String.
+/// primitive; `Add`/`Sub`/`Mul`/`Div`/`Neg` on Int and Float; `Pow` on Float
+/// only (stdlib.md § Pow — negative integer exponents wouldn't return an Int);
+/// `Concat` on String.
 pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
     use PrimTy::*;
     use TraitId::*;
@@ -464,10 +466,11 @@ pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
         add(Ord, p, reg);
     }
     for &p in numeric {
-        for t in [Add, Sub, Mul, Div, Pow, Neg] {
+        for t in [Add, Sub, Mul, Div, Neg] {
             add(t, p, reg);
         }
     }
+    add(Pow, Float, reg);
     add(Concat, String, reg);
 }
 ```
