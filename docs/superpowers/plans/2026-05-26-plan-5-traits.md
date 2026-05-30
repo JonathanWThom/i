@@ -661,12 +661,11 @@ Add a new pass at the end of `build_registry` (after the method second-pass loop
             continue;
         };
         let target_ty = infer.lower_type(target);
+        // Vars and Fun have no head. For a named-but-unknown type, `lower_type`
+        // already pushed `Unresolved`, so skipping silently avoids a duplicate
+        // diagnostic. Amended from the earlier draft, which pushed UnknownType
+        // here and double-reported on `impl Eq Foo` where `Foo` is undeclared.
         let Some(head) = head_of(&target_ty) else {
-            // A type variable or function type can't be an impl target.
-            infer.errors.push(Error {
-                span: decl.span,
-                kind: ErrorKind::UnknownType { name: trait_name.clone() },
-            });
             continue;
         };
 

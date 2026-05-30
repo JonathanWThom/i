@@ -13,8 +13,9 @@ use crate::ast::{
 };
 use crate::check::infer::Infer;
 use crate::check::registry::{
-    FieldInfo, MethodInfo, PayloadShape, TypeDeclBody, TypeDeclInfo, VariantInfo,
+    FieldInfo, ImplInfo, MethodInfo, PayloadShape, TypeDeclBody, TypeDeclInfo, VariantInfo, head_of,
 };
+use crate::check::traits::{TraitId, seed_builtin_impls};
 use crate::check::unify::{UnifyError, apply_subst, unify};
 use crate::error::{Error, ErrorKind};
 use crate::resolve::{DefId, DefKind, Resolution, ResolvedName};
@@ -594,4 +595,86 @@ fn build_registry(file: &File, infer: &mut Infer) {
             }
         }
     }
+
+    // Each `impl Trait Type` registers (TraitId, head) in the impl table after
+    // coherence checks. Method bodies aren't checked against trait signatures
+    // in Plan 5 — only the method set is.
+    for decl in &file.decls {
+        let DeclKind::ImplDecl {
+            trait_name,
+            target,
+            methods,
+        } = &decl.node
+        else {
+            continue;
+        };
+        let Some(trait_) = TraitId::from_name(trait_name) else {
+            infer.errors.push(Error {
+                span: decl.span,
+                kind: ErrorKind::UnknownTrait {
+                    name: trait_name.clone(),
+                },
+            });
+            continue;
+        };
+        let target_ty = infer.lower_type(target);
+        // Vars and Fun have no head. For a named-but-unknown type, lower_type
+        // already pushed `Unresolved`, so we just skip rather than double-report.
+        let Some(head) = head_of(&target_ty) else {
+            continue;
+        };
+
+        if infer.registry.impls.contains_key(&(trait_, head)) {
+            infer.errors.push(Error {
+                span: decl.span,
+                kind: ErrorKind::DuplicateImpl {
+                    trait_name: trait_.name().to_string(),
+                    ty: format!("{target_ty}"),
+                },
+            });
+            continue;
+        }
+
+        let required = trait_.method_names();
+        let provided: Vec<&str> = methods
+            .iter()
+            .filter_map(|m| match &m.node {
+                DeclKind::Binding {
+                    name,
+                    value: Some(_),
+                    ..
+                } => Some(name.as_str()),
+                _ => None,
+            })
+            .collect();
+        for req in required {
+            if !provided.contains(req) {
+                infer.errors.push(Error {
+                    span: decl.span,
+                    kind: ErrorKind::MissingMethod {
+                        trait_name: trait_.name().to_string(),
+                        method: req.to_string(),
+                    },
+                });
+            }
+        }
+        for p in &provided {
+            if !required.contains(p) {
+                infer.errors.push(Error {
+                    span: decl.span,
+                    kind: ErrorKind::UnknownMethod {
+                        trait_name: trait_.name().to_string(),
+                        method: p.to_string(),
+                    },
+                });
+            }
+        }
+
+        infer
+            .registry
+            .impls
+            .insert((trait_, head), ImplInfo { trait_, head });
+    }
+
+    seed_builtin_impls(&mut infer.registry);
 }
