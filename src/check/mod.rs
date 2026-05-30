@@ -221,7 +221,7 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
                             span,
                             kind: ErrorKind::MissingImpl {
                                 trait_name: c.trait_.name().to_string(),
-                                ty: format!("{resolved}"),
+                                ty: crate::check::types::ty_to_string(&resolved, infer.res),
                             },
                         });
                     }
@@ -692,7 +692,7 @@ fn build_registry(file: &File, infer: &mut Infer) {
                 span: decl.span,
                 kind: ErrorKind::DuplicateImpl {
                     trait_name: trait_.name().to_string(),
-                    ty: format!("{target_ty}"),
+                    ty: crate::check::types::ty_to_string(&target_ty, infer.res),
                 },
             });
             continue;

@@ -1,5 +1,5 @@
 use crate::check::traits::TraitId;
-use crate::resolve::DefId;
+use crate::resolve::{DefId, Resolution};
 use crate::span::Span;
 use std::collections::HashMap;
 
@@ -100,6 +100,80 @@ pub struct Typing {
     pub pattern_types: HashMap<Span, Ty>,
 }
 
+/// Render a type using resolved constructor names instead of `#<DefId>`. Falls
+/// back to the raw `Display` form when a DefId isn't in `res.defs` — that
+/// happens in unit tests that synthesise schemes without a real resolver.
+pub fn ty_to_string(ty: &Ty, res: &Resolution) -> String {
+    match ty {
+        Ty::Var(_) | Ty::Prim(_) => format!("{ty}"),
+        Ty::Con(id, args) => {
+            let name = res
+                .defs
+                .iter()
+                .find(|d| d.id == *id)
+                .map(|d| d.name.clone())
+                .unwrap_or_else(|| format!("#{}", id.0));
+            if args.is_empty() {
+                name
+            } else {
+                let inner: Vec<String> = args.iter().map(|a| ty_arg_to_string(a, res)).collect();
+                format!("{name} {}", inner.join(" "))
+            }
+        }
+        Ty::Fun(ps, r) => {
+            let params: Vec<String> = ps.iter().map(|p| ty_to_string(p, res)).collect();
+            format!("{} -> {}", params.join(", "), ty_to_string(r, res))
+        }
+    }
+}
+
+/// Render a type in a position that needs grouping for compounds — i.e. as an
+/// argument to a type constructor. Parenthesises `Con` with args and `Fun` so
+/// `List (Maybe Int)` doesn't flatten to `List Maybe Int`.
+fn ty_arg_to_string(ty: &Ty, res: &Resolution) -> String {
+    match ty {
+        Ty::Con(_, args) if !args.is_empty() => format!("({})", ty_to_string(ty, res)),
+        Ty::Fun(..) => format!("({})", ty_to_string(ty, res)),
+        _ => ty_to_string(ty, res),
+    }
+}
+
+pub fn scheme_to_string(s: &Scheme, res: &Resolution) -> String {
+    let mut out = String::new();
+    if !s.vars.is_empty() {
+        let vars: Vec<String> = s.vars.iter().map(|v| format!("t{}", v.0)).collect();
+        out.push_str(&format!("forall {} . ", vars.join(" ")));
+    }
+    if !s.constraints.is_empty() {
+        let cs: Vec<String> = s
+            .constraints
+            .iter()
+            .map(|c| format!("{} {}", c.trait_.name(), ty_to_string(&c.ty, res)))
+            .collect();
+        out.push_str(&format!("{} => ", cs.join(", ")));
+    }
+    out.push_str(&ty_to_string(&s.ty, res));
+    out
+}
+
+/// Render a whole `Typing` with binding names, sorted by DefId for stable
+/// snapshots.
+pub fn render_typing(t: &Typing, res: &Resolution) -> String {
+    let mut out = String::from("schemes:\n");
+    let mut entries: Vec<(&DefId, &Scheme)> = t.schemes.iter().collect();
+    entries.sort_by_key(|(id, _)| id.0);
+    for (id, scheme) in entries {
+        let name = res
+            .defs
+            .iter()
+            .find(|d| d.id == *id)
+            .map(|d| d.name.clone())
+            .unwrap_or_else(|| format!("#{}", id.0));
+        out.push_str(&format!("  {name} : {}\n", scheme_to_string(scheme, res)));
+    }
+    out
+}
+
 impl std::fmt::Display for Typing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "schemes:")?;
@@ -151,6 +225,66 @@ mod tests {
         };
         assert_eq!(s.constraints.len(), 1);
         assert_eq!(s.constraints[0].trait_, TraitId::Eq);
+    }
+
+    #[test]
+    fn ty_to_string_uses_resolved_name_for_con() {
+        use crate::resolve::{DefInfo, DefKind, Resolution};
+        use crate::span::Span;
+        let mut res = Resolution::default();
+        res.defs.push(DefInfo {
+            id: DefId(0),
+            name: "Maybe".into(),
+            kind: DefKind::Type,
+            span: Span::new(0, 0),
+        });
+        let ty = Ty::Con(DefId(0), vec![Ty::Prim(PrimTy::Int)]);
+        assert_eq!(ty_to_string(&ty, &res), "Maybe Int");
+    }
+
+    #[test]
+    fn ty_to_string_parenthesises_compound_args() {
+        use crate::resolve::{DefInfo, DefKind, Resolution};
+        use crate::span::Span;
+        let mut res = Resolution::default();
+        for (i, n) in ["List", "Maybe"].iter().enumerate() {
+            res.defs.push(DefInfo {
+                id: DefId(i as u32),
+                name: (*n).into(),
+                kind: DefKind::Type,
+                span: Span::new(0, 0),
+            });
+        }
+        let nested = Ty::Con(
+            DefId(0),
+            vec![Ty::Con(DefId(1), vec![Ty::Prim(PrimTy::Int)])],
+        );
+        assert_eq!(ty_to_string(&nested, &res), "List (Maybe Int)");
+        let with_fun = Ty::Con(
+            DefId(0),
+            vec![Ty::Fun(
+                vec![Ty::Prim(PrimTy::Int)],
+                Box::new(Ty::Prim(PrimTy::Bool)),
+            )],
+        );
+        assert_eq!(ty_to_string(&with_fun, &res), "List (Int -> Bool)");
+    }
+
+    #[test]
+    fn scheme_to_string_includes_constraints() {
+        let res = crate::resolve::Resolution::default();
+        let s = Scheme {
+            vars: vec![TyVarId(0)],
+            constraints: vec![Constraint {
+                trait_: TraitId::Eq,
+                ty: Ty::Var(TyVarId(0)),
+            }],
+            ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Bool))),
+        };
+        assert_eq!(
+            scheme_to_string(&s, &res),
+            "forall t0 . Eq t0 => t0 -> Bool"
+        );
     }
 
     #[test]

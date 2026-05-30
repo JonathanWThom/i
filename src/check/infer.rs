@@ -514,7 +514,7 @@ impl<'a> Infer<'a> {
                 self.errors.push(Error {
                     span: receiver.span,
                     kind: crate::error::ErrorKind::CannotAccessMember {
-                        ty: format!("{resolved}"),
+                        ty: crate::check::types::ty_to_string(&resolved, self.res),
                         member: field.to_string(),
                     },
                 });
