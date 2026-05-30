@@ -89,7 +89,7 @@ See [`2026-05-26-plan-5-traits.md`](2026-05-26-plan-5-traits.md). Scope: built-i
 - [ ] Effects (IO/State/Env, HOF effect-polymorphism, `?`) — Plan 6 (TBD)
 - [ ] Totality / termination checking — Plan 7 (TBD)
 - [ ] Interpreter — Plan 8 (TBD)
-- [ ] Stdlib — Plan 9 (TBD)
+- [ ] Stdlib — Plan 9 (TBD) — defines `Result`/`Maybe`/`print`/`Ref`/`Env` in `prelude.i`; also retires Plan 6's name+variant `?` recognition heuristic (recognise by prelude `DefId`s, reject shadowing) and Plan 5's `seed_builtin_impls`
 - [ ] Driver / CLI — Plan 10 (TBD)
 - [ ] Golden test harness — Plan 11 (TBD)
 

@@ -163,14 +163,38 @@ the inferred row in the signature prevents accidental widening"
 `expr?` unwraps a success value or propagates failure to the enclosing
 function. It is checked control flow, not an effect.
 
-- **Seed `Maybe a` (`Some`/`None`) and `Result a e` (`Ok`/`Error`) as
-  built-in types** — registry entries plus resolver wiring, mirroring how
-  primitive types are seeded today. This is required for two independent
-  reasons: the checker must *recognise* the failure-carrying types (it
-  cannot guess "this sum type means failure" from shape), and a test
-  fixture must be able to *construct* a `Result`/`Maybe` value without a
-  prelude. This is the one place Plan 6 reaches outside the checker into
-  the resolver.
+- **Recognise `Result`/`Maybe`; do not seed them.** `Result a e`
+  (`Ok`/`Error`) and `Maybe a` (`Some`/`None`) are defined as ordinary sum
+  types — by the fixtures in Plan 6, by `prelude.i` in Plan 9 — using the
+  existing sum-type machinery the language already supports (`type Maybe a
+  / None / Some : a` already type-checks today; see `tests/check_sums.rs`).
+  When `build_registry` runs, it **tags** the `DefId`s of any registered
+  type named `Result`/`Maybe` whose variant set matches (`Ok`/`Error`,
+  `Some`/`None`) and stores them (e.g. `builtin.result`, `builtin.maybe`).
+  `?` recognises failure types by those **stored `DefId`s**, never by name
+  at the use site — so the recognition is DefId-based and robust (it
+  handles `Result a e`'s positional error slot exactly), while the
+  name+variant match is a one-shot bootstrap used only to *find* the
+  canonical type. This needs no resolver changes and no built-in seeding,
+  reuses the existing sum-type path, and breaks none of Plan 4's fixtures.
+
+  *Why not seed built-ins (the rejected alternative):* primitives carry no
+  `DefId` (`lower_type` string-matches them; the resolver skips them), but
+  `Result`/`Maybe` are parameterised nominals with constructors that must
+  resolve and need ctor schemes — so seeding them would invent a new
+  synthetic-nominal path in the resolver that nothing else needs, collide
+  with the user-defined `type Maybe a` already in three fixtures, and force
+  a removal-migration when Plan 9 defines them in `prelude.i`. The
+  recognise-don't-seed approach is invisible to `?` when that source-moves
+  to the prelude. (Decision reached via two-subagent analysis, 2026-05-30;
+  supersedes this section's earlier "seed as built-in types" wording.)
+
+  **Debt (→ Plan 9):** the name+variant *bootstrap* is a heuristic — a user
+  could declare an unrelated `type Maybe` with the wrong variants. Plan 9
+  retires it: once `prelude.i` is the canonical source, recognise
+  `Result`/`Maybe` by the prelude's `DefId`s and reject user redefinitions
+  that shadow the prelude types. Recorded on the Plan 9 line of
+  `PROGRESS.md` and in "Explicitly deferred" below.
 - Infer threads the **enclosing function's return type** as a stack,
   pushed when descending into a lambda or binding body and popped on the
   way out. `?` consults the innermost entry.
@@ -235,6 +259,12 @@ effectful callbacks, and a `?`-using function. Update `docs/checker.md`
   6 tests effect propagation through *hand-written annotations* instead,
   which is the purest test of the machinery and needs no prelude. This
   deferral is recorded both here and on the Plan 9 line of `PROGRESS.md`.
+- **Canonical `Result`/`Maybe` recognition** — Plan 6 finds these types by
+  a name+variant bootstrap heuristic at registry-build (see the `?`
+  section). **Plan 9 (stdlib)** retires the heuristic: with `prelude.i` as
+  the canonical source, recognise them by the prelude's `DefId`s and reject
+  user redefinitions that shadow the prelude types. Recorded on the Plan 9
+  line of `PROGRESS.md`.
 - **User-named effect-row variables** (`(a -> b ! e)` with `e` bound) —
   post-v1 (effects.md § 7). The implicit tail covers every v1 case.
 - **An exception / error effect** — modelling `?` as an effect rather than
