@@ -1,4 +1,6 @@
 use crate::ast::{BinOp, UnaryOp};
+use crate::check::registry::{ImplInfo, TypeHead, TypeRegistry};
+use crate::check::types::PrimTy;
 
 /// The built-in operator traits. Intrinsic in Plan 5 — there is no prelude
 /// declaring them yet (Plan 9). Operators are the only thing that names a
@@ -88,6 +90,42 @@ impl TraitId {
     }
 }
 
+/// Synthesises the impls that a future `prelude.i` (Plan 9) will provide in
+/// source: Eq/Ord on every primitive, numeric traits on Int and Float,
+/// Concat on String.
+pub fn seed_builtin_impls(reg: &mut TypeRegistry) {
+    let eq_ord: &[PrimTy] = &[
+        PrimTy::Int,
+        PrimTy::Float,
+        PrimTy::String,
+        PrimTy::Bool,
+        PrimTy::Unit,
+    ];
+    let numeric: &[PrimTy] = &[PrimTy::Int, PrimTy::Float];
+
+    let add = |t: TraitId, p: PrimTy, reg: &mut TypeRegistry| {
+        let head = TypeHead::Prim(p);
+        reg.impls.insert((t, head), ImplInfo { trait_: t, head });
+    };
+    for &p in eq_ord {
+        add(TraitId::Eq, p, reg);
+        add(TraitId::Ord, p, reg);
+    }
+    for &p in numeric {
+        for t in [
+            TraitId::Add,
+            TraitId::Sub,
+            TraitId::Mul,
+            TraitId::Div,
+            TraitId::Pow,
+            TraitId::Neg,
+        ] {
+            add(t, p, reg);
+        }
+    }
+    add(TraitId::Concat, PrimTy::String, reg);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +158,38 @@ mod tests {
     fn trait_id_parses_from_name() {
         assert_eq!(TraitId::from_name("Ord"), Some(TraitId::Ord));
         assert_eq!(TraitId::from_name("Nope"), None);
+    }
+
+    #[test]
+    fn builtin_impls_cover_primitive_arithmetic_and_eq() {
+        use crate::check::registry::{TypeHead, TypeRegistry};
+        use crate::check::types::PrimTy;
+        let mut reg = TypeRegistry::default();
+        seed_builtin_impls(&mut reg);
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Add, TypeHead::Prim(PrimTy::Int)))
+        );
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Add, TypeHead::Prim(PrimTy::Float)))
+        );
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Eq, TypeHead::Prim(PrimTy::Int)))
+        );
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Ord, TypeHead::Prim(PrimTy::Float)))
+        );
+        assert!(
+            reg.impls
+                .contains_key(&(TraitId::Concat, TypeHead::Prim(PrimTy::String)))
+        );
+        // No arithmetic on String.
+        assert!(
+            !reg.impls
+                .contains_key(&(TraitId::Add, TypeHead::Prim(PrimTy::String)))
+        );
     }
 }
