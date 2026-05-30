@@ -1,6 +1,6 @@
 use crate::ast::{BinOp, Expr, ExprKind, LitPat, Pattern, PatternKind, UnaryOp};
 use crate::check::registry::TypeRegistry;
-use crate::check::types::{PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
+use crate::check::types::{Constraint, PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::{apply_subst, unify};
 use crate::error::Error;
 use crate::resolve::{DefId, LocalId, Resolution, ResolvedName};
@@ -21,6 +21,9 @@ pub struct Infer<'a> {
     pub schemes: HashMap<DefId, Scheme>,
     pub registry: TypeRegistry,
     pub errors: Vec<Error>,
+    /// Obligations gathered during body inference. Discharged per-SCC after
+    /// the body's substitution is final.
+    pub constraints: Vec<(Constraint, Span)>,
     next_var: u32,
     expr_types: HashMap<Span, Ty>,
     pattern_types: HashMap<Span, Ty>,
@@ -35,6 +38,7 @@ impl<'a> Infer<'a> {
             schemes: HashMap::new(),
             registry: TypeRegistry::default(),
             errors: Vec::new(),
+            constraints: Vec::new(),
             next_var: 0,
             expr_types: HashMap::new(),
             pattern_types: HashMap::new(),
@@ -55,11 +59,20 @@ impl<'a> Infer<'a> {
         self.pattern_types.insert(span, ty);
     }
 
-    pub fn instantiate(&mut self, scheme: Scheme) -> Ty {
+    pub fn instantiate(&mut self, scheme: Scheme, span: Span) -> Ty {
         let mut s: Subst = HashMap::new();
         for v in &scheme.vars {
             let fresh = self.fresh();
             s.insert(*v, Ty::Var(fresh));
+        }
+        for c in &scheme.constraints {
+            self.constraints.push((
+                Constraint {
+                    trait_: c.trait_,
+                    ty: apply_subst(&c.ty, &s),
+                },
+                span,
+            ));
         }
         apply_subst(&scheme.ty, &s)
     }
@@ -139,7 +152,7 @@ impl<'a> Infer<'a> {
             ExprKind::StringLit(_) => Ty::Prim(PrimTy::String),
             ExprKind::Var(_) => match self.res.refs.get(&e.span) {
                 Some(ResolvedName::TopLevel(def_id)) => match self.schemes.get(def_id).cloned() {
-                    Some(scheme) => self.instantiate(scheme),
+                    Some(scheme) => self.instantiate(scheme, e.span),
                     None => Ty::Var(self.fresh()),
                 },
                 Some(ResolvedName::Local(local_id)) => self
@@ -151,7 +164,7 @@ impl<'a> Infer<'a> {
             },
             ExprKind::Ctor(name) => match self.res.refs.get(&e.span).cloned() {
                 Some(ResolvedName::Ctor(ctor_id)) => match self.schemes.get(&ctor_id).cloned() {
-                    Some(scheme) => self.instantiate(scheme),
+                    Some(scheme) => self.instantiate(scheme, e.span),
                     None => Ty::Var(self.fresh()),
                 },
                 _ => {
@@ -610,7 +623,7 @@ impl<'a> Infer<'a> {
                 };
             }
         };
-        let inst = self.instantiate(scheme);
+        let inst = self.instantiate(scheme, p.span);
         let (payload_tys, result_ty) = match inst {
             Ty::Fun(ps, r) => (ps, *r),
             other => (Vec::new(), other),
@@ -846,6 +859,28 @@ mod tests {
         let a = infer.fresh();
         let b = infer.fresh();
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn instantiating_constrained_scheme_records_ambient_constraint() {
+        use crate::check::traits::TraitId;
+        let res = Resolution::default();
+        let mut infer = Infer::new(&res);
+        let a = infer.fresh();
+        let scheme = Scheme {
+            vars: vec![a],
+            constraints: vec![Constraint {
+                trait_: TraitId::Eq,
+                ty: Ty::Var(a),
+            }],
+            ty: Ty::Fun(vec![Ty::Var(a)], Box::new(Ty::Prim(PrimTy::Bool))),
+        };
+        let span = Span::new(0, 1);
+        let _ = infer.instantiate(scheme, span);
+        // Carried into ambient set with `a` renamed to a fresh var.
+        assert_eq!(infer.constraints.len(), 1);
+        assert_eq!(infer.constraints[0].0.trait_, TraitId::Eq);
+        assert_ne!(infer.constraints[0].0.ty, Ty::Var(a));
     }
 
     #[test]
