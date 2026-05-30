@@ -133,6 +133,13 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 tightly coupled to the same task (e.g., spec clarification), fold it
 into the same commit via amend rather than creating a fresh one.
 
+**Push is the finalizer.** Once a commit lands (the pre-commit hook's
+`make ci` having passed), push it to the current branch's remote without
+asking — committing authorises the push. The rhythm is unchanged: one
+task, commit, push, summarise, wait for "yes". This covers only ordinary
+fast-forward pushes of new commits; force-push, rebase, and reset against
+shared history still require asking (see "What to ask before doing").
+
 ## Quality bar
 
 Every commit must pass `make ci`:
@@ -163,6 +170,8 @@ genuinely tabular. Avoid restating what I just said.
 - Making the smallest change to fix a failing test
 - Editing `docs/` to clarify wording or fix typos when adjacent to other
   work in the same task
+- Pushing new commits to the current branch's remote right after
+  committing (ordinary fast-forward, non-force)
 
 ## What to ask before doing
 
