@@ -884,11 +884,14 @@ Replace `infer_binop` (`src/check/infer.rs:279-313`) with trait dispatch:
     fn infer_binop(&mut self, e: &Expr, op: &BinOp, lhs: &Expr, rhs: &Expr) -> Ty {
         let lhs_ty = self.infer_expr(lhs);
         let rhs_ty = self.infer_expr(rhs);
-        // Operands must agree; unify the two sides first for every operator.
-        self.unify_operands(&lhs_ty, &rhs_ty, e.span);
 
         match crate::check::traits::TraitId::of_binop(op) {
             Some(trait_) => {
+                // Unify sides so the trait dispatch sees a single operand type.
+                // (Amended: the earlier draft unified for *every* operator,
+                // including and/or/xor, which produced a redundant mismatch
+                // error on `1 and True` alongside the Bool mismatches.)
+                self.unify_operands(&lhs_ty, &rhs_ty, e.span);
                 let operand = apply_subst(&lhs_ty, &self.subst);
                 // Record the obligation; the per-SCC solver discharges it
                 // against the impl table (or retains it on the scheme).

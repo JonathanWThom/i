@@ -1,4 +1,5 @@
 use i_lang::check::check_file;
+use i_lang::check::types::{PrimTy, Ty};
 use i_lang::error::ErrorKind;
 use i_lang::lex::lex;
 use i_lang::parse::parse;
@@ -12,6 +13,29 @@ fn errors(src: &str) -> Vec<ErrorKind> {
         Ok(_) => vec![],
         Err(es) => es.into_iter().map(|e| e.kind).collect(),
     }
+}
+
+fn check_ok(src: &str) -> i_lang::check::Typing {
+    let toks = lex(src).expect("lex");
+    let file = parse(&toks).expect("parse");
+    let res = resolve_file(&file).expect("resolve");
+    check_file(&file, &res).expect("check")
+}
+
+#[test]
+fn int_addition_still_types_as_int() {
+    // Operator now dispatches via Add, but 3 + 4 must still type as Int
+    // (Add Int is a seeded built-in impl).
+    let t = check_ok("main = 3 + 4\n");
+    let scheme = t.schemes.values().next().expect("a scheme");
+    assert_eq!(scheme.ty, Ty::Prim(PrimTy::Int));
+}
+
+#[test]
+fn comparison_still_types_as_bool() {
+    let t = check_ok("main = 3 < 4\n");
+    let scheme = t.schemes.values().next().unwrap();
+    assert_eq!(scheme.ty, Ty::Prim(PrimTy::Bool));
 }
 
 #[test]
