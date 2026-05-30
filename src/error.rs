@@ -77,4 +77,57 @@ pub enum ErrorKind {
         ty: String,
         member: String,
     },
+    MissingImpl {
+        trait_name: String,
+        ty: String,
+    },
+    DuplicateImpl {
+        trait_name: String,
+        ty: String,
+    },
+    UnknownTrait {
+        name: String,
+    },
+    MissingMethod {
+        trait_name: String,
+        method: String,
+    },
+    UnknownMethod {
+        trait_name: String,
+        method: String,
+    },
+    AmbiguousConstraint {
+        trait_name: String,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_trait_error_variants_exist() {
+        let _ = ErrorKind::MissingImpl {
+            trait_name: "Eq".into(),
+            ty: "Point".into(),
+        };
+        let _ = ErrorKind::DuplicateImpl {
+            trait_name: "Eq".into(),
+            ty: "Point".into(),
+        };
+        let _ = ErrorKind::UnknownTrait {
+            name: "Nope".into(),
+        };
+        let _ = ErrorKind::MissingMethod {
+            trait_name: "Eq".into(),
+            method: "ne".into(),
+        };
+        let _ = ErrorKind::UnknownMethod {
+            trait_name: "Eq".into(),
+            method: "zz".into(),
+        };
+        let _ = ErrorKind::AmbiguousConstraint {
+            trait_name: "Eq".into(),
+        };
+    }
 }
