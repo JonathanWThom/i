@@ -1,5 +1,5 @@
 use i_lang::check::check_file;
-use i_lang::check::types::{PrimTy, Ty};
+use i_lang::check::types::{EffectRow, PrimTy, Ty};
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
@@ -61,7 +61,7 @@ fn identity_is_generalised_to_forall() {
         scheme
     );
     match &scheme.ty {
-        Ty::Fun(params, result) => {
+        Ty::Fun(params, _row, result) => {
             assert_eq!(params.len(), 1);
             assert_eq!(&params[0], result.as_ref());
             assert!(matches!(params[0], Ty::Var(_)));
@@ -96,7 +96,11 @@ double = n -> n
     let res = resolve_file(&file).unwrap();
     let typing = check_file(&file, &res).unwrap();
     let d = res.defs.iter().find(|d| d.name == "double").unwrap();
-    let expected = Ty::Fun(vec![Ty::Prim(PrimTy::Int)], Box::new(Ty::Prim(PrimTy::Int)));
+    let expected = Ty::Fun(
+        vec![Ty::Prim(PrimTy::Int)],
+        EffectRow::pure(),
+        Box::new(Ty::Prim(PrimTy::Int)),
+    );
     assert_eq!(typing.schemes[&d.id].ty, expected);
 }
 

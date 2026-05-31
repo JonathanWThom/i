@@ -1,5 +1,5 @@
 use i_lang::check::check_file;
-use i_lang::check::types::{PrimTy, Ty};
+use i_lang::check::types::{EffectRow, PrimTy, Ty};
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
@@ -84,7 +84,7 @@ unwrapOr = m d -> m match
         typing
             .schemes
             .values()
-            .any(|s| matches!(&s.ty, Ty::Fun(_, _)))
+            .any(|s| matches!(&s.ty, Ty::Fun(..)))
     );
 }
 
@@ -100,7 +100,11 @@ classify = n -> n match
     let res = resolve_file(&file).unwrap();
     let typing = check_file(&file, &res).unwrap();
     let c = res.defs.iter().find(|d| d.name == "classify").unwrap();
-    let expected = Ty::Fun(vec![Ty::Prim(PrimTy::Int)], Box::new(Ty::Prim(PrimTy::Int)));
+    let expected = Ty::Fun(
+        vec![Ty::Prim(PrimTy::Int)],
+        EffectRow::pure(),
+        Box::new(Ty::Prim(PrimTy::Int)),
+    );
     assert_eq!(typing.schemes[&c.id].ty, expected);
 }
 
@@ -122,6 +126,7 @@ intOf = m -> m match
     let maybe = res.defs.iter().find(|d| d.name == "Maybe").unwrap();
     let expected = Ty::Fun(
         vec![Ty::Con(maybe.id, vec![Ty::Prim(PrimTy::Int)])],
+        EffectRow::pure(),
         Box::new(Ty::Prim(PrimTy::Int)),
     );
     assert_eq!(typing.schemes[&f.id].ty, expected);

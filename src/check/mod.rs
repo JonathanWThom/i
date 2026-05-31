@@ -131,7 +131,7 @@ pub fn check_file(file: &File, res: &Resolution) -> Result<Typing, Vec<Error>> {
             // them eagerly enough for member access.
             let expected = apply_subst(&Ty::Var(v), &infer.subst);
             let body_ty = match (&value.node, &expected) {
-                (ExprKind::Lambda { params, body }, Ty::Fun(param_tys, _))
+                (ExprKind::Lambda { params, body }, Ty::Fun(param_tys, _, _))
                     if params.len() == param_tys.len() =>
                 {
                     let param_tys = param_tys.clone();
@@ -288,7 +288,7 @@ fn free_vars(ty: &Ty) -> HashSet<TyVarId> {
             }
             Ty::Prim(_) => {}
             Ty::Con(_, args) => args.iter().for_each(|a| walk(a, out)),
-            Ty::Fun(ps, r) => {
+            Ty::Fun(ps, _row, r) => {
                 ps.iter().for_each(|p| walk(p, out));
                 walk(r, out);
             }
@@ -550,11 +550,14 @@ fn build_registry(file: &File, infer: &mut Infer) {
             for variant in variants {
                 let scheme_ty = match &variant.payload {
                     PayloadShape::Bare => parent_ty.clone(),
-                    PayloadShape::Single(ty) => {
-                        Ty::Fun(vec![ty.clone()], Box::new(parent_ty.clone()))
-                    }
+                    PayloadShape::Single(ty) => Ty::Fun(
+                        vec![ty.clone()],
+                        EffectRow::pure(),
+                        Box::new(parent_ty.clone()),
+                    ),
                     PayloadShape::Record(fs) => Ty::Fun(
                         fs.iter().map(|f| f.ty.clone()).collect(),
+                        EffectRow::pure(),
                         Box::new(parent_ty.clone()),
                     ),
                 };
@@ -634,7 +637,11 @@ fn build_registry(file: &File, infer: &mut Infer) {
             infer.locals.insert(self_local, parent_ty.clone());
             let body_ty = infer.infer_expr(body);
             let result_resolved = apply_subst(&body_ty, &infer.subst);
-            let fun_ty = Ty::Fun(vec![parent_ty.clone()], Box::new(result_resolved.clone()));
+            let fun_ty = Ty::Fun(
+                vec![parent_ty.clone()],
+                EffectRow::pure(),
+                Box::new(result_resolved.clone()),
+            );
 
             // Generalise: bind parent params + any other free tyvars in the
             // method's type that don't escape into env (env_free is empty here

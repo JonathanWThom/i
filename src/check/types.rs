@@ -88,7 +88,7 @@ pub enum Ty {
     Var(TyVarId),
     Prim(PrimTy),
     Con(DefId, Vec<Ty>),
-    Fun(Vec<Ty>, Box<Ty>),
+    Fun(Vec<Ty>, EffectRow, Box<Ty>),
 }
 
 /// "`ty` must implement `trait_`." The sole obligation kind in Plan 5.
@@ -133,7 +133,7 @@ impl std::fmt::Display for Ty {
                 }
                 Ok(())
             }
-            Ty::Fun(ps, r) => {
+            Ty::Fun(ps, _row, r) => {
                 for (i, p) in ps.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
@@ -159,7 +159,17 @@ impl std::fmt::Display for Scheme {
     }
 }
 
-pub type Subst = HashMap<TyVarId, Ty>;
+#[derive(Debug, Default, Clone)]
+pub struct Subst {
+    pub tys: HashMap<TyVarId, Ty>,
+    pub effs: HashMap<EffectVarId, EffectRow>,
+}
+
+impl Subst {
+    pub fn new() -> Self {
+        Subst::default()
+    }
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct Typing {
@@ -188,7 +198,7 @@ pub fn ty_to_string(ty: &Ty, res: &Resolution) -> String {
                 format!("{name} {}", inner.join(" "))
             }
         }
-        Ty::Fun(ps, r) => {
+        Ty::Fun(ps, _row, r) => {
             let params: Vec<String> = ps.iter().map(|p| ty_to_string(p, res)).collect();
             format!("{} -> {}", params.join(", "), ty_to_string(r, res))
         }
@@ -278,6 +288,7 @@ mod tests {
     fn display_function() {
         let ty = Ty::Fun(
             vec![Ty::Prim(PrimTy::Int), Ty::Prim(PrimTy::Int)],
+            EffectRow::pure(),
             Box::new(Ty::Prim(PrimTy::Bool)),
         );
         assert_eq!(format!("{ty}"), "Int, Int -> Bool");
@@ -298,7 +309,11 @@ mod tests {
                 trait_: TraitId::Eq,
                 ty: Ty::Var(TyVarId(0)),
             }],
-            ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Bool))),
+            ty: Ty::Fun(
+                vec![Ty::Var(TyVarId(0))],
+                EffectRow::pure(),
+                Box::new(Ty::Prim(PrimTy::Bool)),
+            ),
         };
         assert_eq!(s.constraints.len(), 1);
         assert_eq!(s.constraints[0].trait_, TraitId::Eq);
@@ -341,6 +356,7 @@ mod tests {
             DefId(0),
             vec![Ty::Fun(
                 vec![Ty::Prim(PrimTy::Int)],
+                EffectRow::pure(),
                 Box::new(Ty::Prim(PrimTy::Bool)),
             )],
         );
@@ -356,7 +372,11 @@ mod tests {
                 trait_: TraitId::Eq,
                 ty: Ty::Var(TyVarId(0)),
             }],
-            ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Prim(PrimTy::Bool))),
+            ty: Ty::Fun(
+                vec![Ty::Var(TyVarId(0))],
+                EffectRow::pure(),
+                Box::new(Ty::Prim(PrimTy::Bool)),
+            ),
         };
         assert_eq!(
             scheme_to_string(&s, &res),
@@ -369,7 +389,11 @@ mod tests {
         let scheme = Scheme {
             vars: vec![TyVarId(0)],
             constraints: Vec::new(),
-            ty: Ty::Fun(vec![Ty::Var(TyVarId(0))], Box::new(Ty::Var(TyVarId(0)))),
+            ty: Ty::Fun(
+                vec![Ty::Var(TyVarId(0))],
+                EffectRow::pure(),
+                Box::new(Ty::Var(TyVarId(0))),
+            ),
         };
         let s = format!("{scheme}");
         assert!(s.starts_with("forall"));

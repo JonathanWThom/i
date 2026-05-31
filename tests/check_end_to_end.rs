@@ -31,7 +31,7 @@ magOrZero = mp -> mp match
     let mag = res.defs.iter().find(|d| d.name == "magOrZero").unwrap();
     let result = &typing.schemes[&mag.id].ty;
     match result {
-        Ty::Fun(params, ret) => {
+        Ty::Fun(params, _row, ret) => {
             assert_eq!(params.len(), 1);
             assert_eq!(ret.as_ref(), &Ty::Prim(PrimTy::Float));
         }

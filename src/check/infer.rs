@@ -1,6 +1,6 @@
 use crate::ast::{BinOp, Expr, ExprKind, LitPat, Pattern, PatternKind, UnaryOp};
 use crate::check::registry::TypeRegistry;
-use crate::check::types::{Constraint, PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
+use crate::check::types::{Constraint, EffectRow, PrimTy, Scheme, Subst, Ty, TyVarId, Typing};
 use crate::check::unify::{apply_subst, unify};
 use crate::error::Error;
 use crate::resolve::{DefId, LocalId, Resolution, ResolvedName};
@@ -60,10 +60,10 @@ impl<'a> Infer<'a> {
     }
 
     pub fn instantiate(&mut self, scheme: Scheme, span: Span) -> Ty {
-        let mut s: Subst = HashMap::new();
+        let mut s = Subst::new();
         for v in &scheme.vars {
             let fresh = self.fresh();
-            s.insert(*v, Ty::Var(fresh));
+            s.tys.insert(*v, Ty::Var(fresh));
         }
         for c in &scheme.constraints {
             self.constraints.push((
@@ -133,7 +133,11 @@ impl<'a> Infer<'a> {
                     .map(|p| self.lower_type_in_scope(p, ctx))
                     .collect();
                 let r = self.lower_type_in_scope(result, ctx);
-                Ty::Fun(ps, Box::new(r))
+                // The AST `effect` annotation is ignored until Task 4; every
+                // lowered function type defaults to a pure row for now. Path-
+                // qualified because the AST `EffectRow` shadows the checker's
+                // in this scope.
+                Ty::Fun(ps, crate::check::types::EffectRow::pure(), Box::new(r))
             }
             TypeKind::Tuple(_) => {
                 self.errors.push(Error {
@@ -182,13 +186,13 @@ impl<'a> Infer<'a> {
                     param_tys.push(pr.ty);
                 }
                 let result_ty = self.infer_expr(body);
-                Ty::Fun(param_tys, Box::new(result_ty))
+                Ty::Fun(param_tys, EffectRow::pure(), Box::new(result_ty))
             }
             ExprKind::Call { func, args } => {
                 let fn_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
                 let result_v = self.fresh();
-                let expected = Ty::Fun(arg_tys, Box::new(Ty::Var(result_v)));
+                let expected = Ty::Fun(arg_tys, EffectRow::pure(), Box::new(Ty::Var(result_v)));
                 if let Err(err) = unify(&mut self.subst, &fn_ty, &expected) {
                     self.errors
                         .push(crate::check::unify_error_to_error(func.span, err));
@@ -284,7 +288,7 @@ impl<'a> Infer<'a> {
             param_tys.push(pr.ty);
         }
         let result_ty = self.infer_expr(body);
-        let ty = Ty::Fun(param_tys, Box::new(result_ty));
+        let ty = Ty::Fun(param_tys, EffectRow::pure(), Box::new(result_ty));
         self.record_expr_type(value.span, ty.clone());
         ty
     }
@@ -409,11 +413,11 @@ impl<'a> Infer<'a> {
 
         // Instantiate the type's params with fresh tyvars; substitute through
         // each declared field type so unification produces inferences for them.
-        let mut inst: Subst = HashMap::new();
+        let mut inst = Subst::new();
         let mut result_args: Vec<Ty> = Vec::with_capacity(info.params.len());
         for p in &info.params {
             let fresh = Ty::Var(self.fresh());
-            inst.insert(*p, fresh.clone());
+            inst.tys.insert(*p, fresh.clone());
             result_args.push(fresh);
         }
         let instantiated: Vec<(String, Ty)> = decl_fields
@@ -471,9 +475,9 @@ impl<'a> Infer<'a> {
             _ => return value_ty,
         };
 
-        let mut inst: Subst = HashMap::new();
+        let mut inst = Subst::new();
         for (p, a) in info.params.iter().zip(type_args.iter()) {
-            inst.insert(*p, a.clone());
+            inst.tys.insert(*p, a.clone());
         }
         let instantiated: Vec<(String, Ty)> = decl_fields
             .iter()
@@ -528,9 +532,9 @@ impl<'a> Infer<'a> {
 
         // Substitution from the type's params to the receiver's type args, used
         // to instantiate both field types and method schemes.
-        let mut inst: Subst = HashMap::new();
+        let mut inst = Subst::new();
         for (p, a) in info.params.iter().zip(type_args.iter()) {
-            inst.insert(*p, a.clone());
+            inst.tys.insert(*p, a.clone());
         }
 
         // Field lookup (records only — sum-payload field access is later work).
@@ -544,12 +548,12 @@ impl<'a> Infer<'a> {
         if let Some(m) = info.methods.iter().find(|m| m.name == field) {
             let mut method_inst = inst.clone();
             for v in &m.scheme.vars {
-                if !method_inst.contains_key(v) {
-                    method_inst.insert(*v, Ty::Var(self.fresh()));
+                if !method_inst.tys.contains_key(v) {
+                    method_inst.tys.insert(*v, Ty::Var(self.fresh()));
                 }
             }
             let instantiated = apply_subst(&m.scheme.ty, &method_inst);
-            if let Ty::Fun(params, ret) = instantiated {
+            if let Ty::Fun(params, row, ret) = instantiated {
                 if params.is_empty() {
                     return *ret;
                 }
@@ -561,7 +565,7 @@ impl<'a> Infer<'a> {
                 if rest.is_empty() {
                     return *ret;
                 }
-                return Ty::Fun(rest, ret);
+                return Ty::Fun(rest, row, ret);
             }
             return instantiated;
         }
@@ -603,7 +607,7 @@ impl<'a> Infer<'a> {
         };
         let inst = self.instantiate(scheme, p.span);
         let (payload_tys, result_ty) = match inst {
-            Ty::Fun(ps, r) => (ps, *r),
+            Ty::Fun(ps, _row, r) => (ps, *r),
             other => (Vec::new(), other),
         };
         if payload_tys.len() != args.len() {
@@ -684,11 +688,11 @@ impl<'a> Infer<'a> {
                 };
             }
         };
-        let mut inst: Subst = HashMap::new();
+        let mut inst = Subst::new();
         let mut result_args: Vec<Ty> = Vec::with_capacity(info.params.len());
         for v in &info.params {
             let fresh = Ty::Var(self.fresh());
-            inst.insert(*v, fresh.clone());
+            inst.tys.insert(*v, fresh.clone());
             result_args.push(fresh);
         }
         let instantiated: Vec<(String, Ty)> = decl_fields
@@ -851,7 +855,11 @@ mod tests {
                 trait_: TraitId::Eq,
                 ty: Ty::Var(a),
             }],
-            ty: Ty::Fun(vec![Ty::Var(a)], Box::new(Ty::Prim(PrimTy::Bool))),
+            ty: Ty::Fun(
+                vec![Ty::Var(a)],
+                EffectRow::pure(),
+                Box::new(Ty::Prim(PrimTy::Bool)),
+            ),
         };
         let span = Span::new(0, 1);
         let _ = infer.instantiate(scheme, span);
@@ -866,7 +874,7 @@ mod tests {
         let res = Resolution::default();
         let mut infer = Infer::new(&res);
         let v = infer.fresh();
-        infer.subst.insert(v, Ty::Prim(PrimTy::Int));
+        infer.subst.tys.insert(v, Ty::Prim(PrimTy::Int));
         let s = Span::new(0, 1);
         infer.record_expr_type(s, Ty::Var(v));
         let typing = infer.into_typing();
@@ -990,6 +998,7 @@ mod tests {
                 constraints: Vec::new(),
                 ty: Ty::Fun(
                     vec![Ty::Var(a)],
+                    EffectRow::pure(),
                     Box::new(Ty::Con(parent_id, vec![Ty::Var(a)])),
                 ),
             },

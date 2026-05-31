@@ -1,5 +1,5 @@
 use i_lang::check::check_file;
-use i_lang::check::types::{PrimTy, Ty};
+use i_lang::check::types::{EffectRow, PrimTy, Ty};
 use i_lang::lex::lex;
 use i_lang::parse::parse;
 use i_lang::resolve::resolve_file;
@@ -176,6 +176,7 @@ getX = p -> p.x
         typing.schemes[&g.id].ty,
         Ty::Fun(
             vec![Ty::Con(point.id, vec![])],
+            EffectRow::pure(),
             Box::new(Ty::Prim(PrimTy::Float))
         )
     );

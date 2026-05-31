@@ -64,7 +64,7 @@ fn identity_lambda_has_fun_type() {
     let typing = check_file(&file, &res).unwrap();
     let id = res.defs.iter().find(|d| d.name == "id").unwrap();
     match &typing.schemes[&id.id].ty {
-        Ty::Fun(params, result) => {
+        Ty::Fun(params, _row, result) => {
             assert_eq!(params.len(), 1);
             assert_eq!(&params[0], result.as_ref());
         }
